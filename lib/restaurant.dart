@@ -2,7 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class RestaurantDetailPage extends StatefulWidget {
-  const RestaurantDetailPage({super.key});
+  final String image;
+  final String name;
+  final String location;
+  final int queue;
+  final Color backgroundColor;
+  final List<String> promotionImages;
+
+  const RestaurantDetailPage({
+    super.key,
+    required this.image,
+    required this.name,
+    required this.location,
+    required this.queue,
+    required this.backgroundColor,
+    required this.promotionImages,
+  });
 
   @override
   State<RestaurantDetailPage> createState() => _RestaurantDetailPageState();
@@ -315,14 +330,14 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               Container(
                 width: 150,
                 height: 150,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Color(0xFF8B2323),
+                  color: widget.backgroundColor,
                 ),
-                child: const Center(
+                child: Center(
                   child: ClipOval(
-                    child: Image(
-                      image: AssetImage('assets/images/famtime.jpeg'),
+                    child: Image.asset(
+                      widget.image,
                       fit: BoxFit.cover,
                       width: 150,
                       height: 150,
@@ -334,9 +349,9 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               const SizedBox(height: 20),
 
               // Restaurant Name
-              const Text(
-                'Fam Time',
-                style: TextStyle(
+              Text(
+                widget.name,
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -344,14 +359,14 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               const SizedBox(height: 10),
 
               // Location
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.location_on, size: 16, color: Colors.grey),
-                  SizedBox(width: 4),
+                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
                   Text(
-                    'Siam Square Soi 4',
-                    style: TextStyle(
+                    widget.location,
+                    style: const TextStyle(
                       color: Colors.grey,
                       fontSize: 16,
                     ),
@@ -361,20 +376,21 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               const SizedBox(height: 5),
 
               // Queue
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.people, size: 16, color: Colors.grey),
-                  SizedBox(width: 4),
+                  const Icon(Icons.people, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
                   Text(
-                    'Queue : 21',
-                    style: TextStyle(
+                    'Queue : ${widget.queue}',
+                    style: const TextStyle(
                       color: Colors.grey,
                       fontSize: 16,
                     ),
                   ),
                 ],
               ),
+
               const SizedBox(height: 30),
 
               // Reservation Type Title
@@ -426,14 +442,14 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                   children: [
                     PageView.builder(
                       controller: _pageController,
-                      itemCount: _imageList.length,
+                      itemCount: widget.promotionImages.length,
                       itemBuilder: (context, index) {
                         return Container(
                           margin: const EdgeInsets.symmetric(horizontal: 10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(15),
                             image: DecorationImage(
-                              image: AssetImage(_imageList[index]),
+                              image: AssetImage(widget.promotionImages[index]),
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -449,7 +465,7 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               // Page Indicator
               SmoothPageIndicator(
                 controller: _pageController,
-                count: 3,
+                count: widget.promotionImages.length,
                 effect: const ExpandingDotsEffect(
                   dotHeight: 8,
                   dotWidth: 8,
@@ -510,9 +526,3 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     );
   }
 }
-
-final List<String> _imageList = [
-  'assets/images/promo-fam.jpg',
-  'assets/images/promo-fam2.jpg',
-  'assets/images/promo-fam3.jpg',
-];

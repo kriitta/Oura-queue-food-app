@@ -130,7 +130,11 @@ class RestaurantListView extends StatelessWidget {
             location: 'Siam Square Soi 4',
             queue: 21,
             backgroundColor: Color(0xFF8B2323),
-            
+            promotionImages: [
+              'assets/images/promo-fam.jpg',
+              'assets/images/promo-fam2.jpg',
+              'assets/images/promo-fam3.jpg',
+            ],
           ),
           RestaurantCard(
             image: 'assets/images/cheevitcheeva.jpeg',
@@ -138,13 +142,23 @@ class RestaurantListView extends StatelessWidget {
             location: 'Emspheare Fl. 3',
             queue: 11,
             backgroundColor: Colors.green[400]!,
+            promotionImages: const [
+              'assets/images/promo-cheevit1.jpg',
+              'assets/images/promo-cheevit2.jpg',
+              'assets/images/promo-cheevit3.jpg',
+            ],
           ),
           RestaurantCard(
             image: 'assets/images/chatrateen.jpeg',
-            name: 'Cha Tra Teen',
+            name: 'Cha Tra Mue',
             location: 'Kasetsart University',
             queue: 999,
             backgroundColor: Colors.red[800]!,
+            promotionImages: const [
+              'assets/images/promo-cha1.jpg',
+              'assets/images/promo-cha2.jpg',
+              'assets/images/promo-cha3.jpg',
+            ],
           ),
           const RestaurantCard(
             image: 'assets/images/ohkraju.jpeg',
@@ -152,6 +166,11 @@ class RestaurantListView extends StatelessWidget {
             location: 'Central World Fl. 2',
             queue: 7,
             backgroundColor: Colors.green,
+            promotionImages: [
+              'assets/images/promo-oh1.jpg',
+              'assets/images/promo-oh2.jpg',
+              'assets/images/promo-oh3.jpg',
+            ],
           ),
           const Padding(
             padding: EdgeInsets.all(16.0),
@@ -163,6 +182,11 @@ class RestaurantListView extends StatelessWidget {
             location: 'Central Lardpao Fl. 1',
             queue: 0,
             isAvailable: false,
+            promotionImages: [
+              'assets/images/promo-oh1.jpg',
+              'assets/images/promo-oh2.jpg',
+              'assets/images/promo-oh3.jpg',
+            ],
           ),
           const RestaurantCard(
             image: 'assets/images/sizzler.jpeg',
@@ -170,6 +194,11 @@ class RestaurantListView extends StatelessWidget {
             location: 'Central World Fl. 7',
             queue: 0,
             isAvailable: false,
+            promotionImages: [
+              'assets/images/promo-siz1.jpg',
+              'assets/images/promo-siz2.jpg',
+              'assets/images/promo-siz3.jpg',
+            ],
           ),
         ],
       ),
@@ -217,6 +246,7 @@ class RestaurantCard extends StatelessWidget {
   final int queue;
   final Color backgroundColor;
   final bool isAvailable;
+  final List<String> promotionImages;
 
   const RestaurantCard({
     super.key,
@@ -224,8 +254,9 @@ class RestaurantCard extends StatelessWidget {
     required this.name,
     required this.location,
     required this.queue,
-    this.backgroundColor = Colors.grey,
+    this.backgroundColor = const Color(0xFF8B2323),
     this.isAvailable = true,
+    required this.promotionImages,
   });
 
   @override
@@ -236,7 +267,14 @@ class RestaurantCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const RestaurantDetailPage(),
+            builder: (context) => RestaurantDetailPage(
+              image: image,
+              name: name,
+              location: location,
+              queue: queue,
+              backgroundColor: backgroundColor,
+              promotionImages: promotionImages,
+            ),
           ),
         );
         }

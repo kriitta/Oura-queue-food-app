@@ -38,8 +38,8 @@ class _MainPageState extends State<MainPage> {
   final List<Widget> _pages = [
     const HomePage(),
     const QueuePage(),
-     const RewardPage(),
-     const ProfilePage(),
+    const RewardPage(),
+    const ProfilePage(),
   ];
 
   @override
@@ -90,7 +90,7 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Qura',
+          'Oura',
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,

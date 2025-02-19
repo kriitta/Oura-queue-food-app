@@ -9,7 +9,7 @@ class QueuePage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF8B2323),
         title: const Text(
-          'Oura',
+          'Queue',
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold,color: Colors.white),
         ),
         centerTitle: true,

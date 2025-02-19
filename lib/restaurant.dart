@@ -135,6 +135,42 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     );
   }
 
+  void _showPromotionPopup(String imagePath) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // รูปโปรโมชั่นแบบเต็มจอ
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                imagePath,
+                fit: BoxFit.contain, // ปรับให้ภาพแสดงเต็มที่โดยไม่ถูกครอป
+              ),
+            ),
+
+            // ปุ่มปิดที่มุมขวาบน
+            Positioned(
+              top: 10,
+              right: 10,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
   void _showQueueInAdvanceDialog() {
   // Initialize with current time
   TimeOfDay selectedTime = TimeOfDay.now();
@@ -434,31 +470,37 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               ),
               const SizedBox(height: 20),
 
-              // Promotion Carousel
-              SizedBox(
-                height: 200,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    PageView.builder(
-                      controller: _pageController,
-                      itemCount: widget.promotionImages.length,
-                      itemBuilder: (context, index) {
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 10),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15),
-                            image: DecorationImage(
-                              image: AssetImage(widget.promotionImages[index]),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+              
+SizedBox(
+  height: 200,
+  child: Stack(
+    alignment: Alignment.center,
+    children: [
+      PageView.builder(
+        controller: _pageController,
+        itemCount: widget.promotionImages.length,
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onTap: () {
+              _showPromotionPopup(widget.promotionImages[index]);
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(15),
+                image: DecorationImage(
+                  image: AssetImage(widget.promotionImages[index]),
+                  fit: BoxFit.cover,
                 ),
               ),
+            ),
+          );
+        },
+      ),
+    ],
+  ),
+),
+
 
               const SizedBox(height: 20),
 

@@ -58,9 +58,10 @@ class RewardPage extends StatelessWidget {
                 crossAxisSpacing: 16,
                 children: const [
                   RewardCard(
-                    icon: Icons.low_priority_sharp,
+                    assetIcon: 'assets/images/queue-pass.png',
                     title: 'Queue Pass',
                     coins: '500 coins',
+                    useAsset: true,
                   ),
                   RewardCard(
                     assetIcon: 'assets/images/starbucks.png',
@@ -69,16 +70,16 @@ class RewardPage extends StatelessWidget {
                     useAsset: true,
                   ),
                   RewardCard(
-                    customIcon: '%',
+                    assetIcon: 'assets/images/discount.png',
                     title: 'Discount 20%',
                     coins: '300 coins',
-                    useCustomIcon: true,
+                    useAsset: true,
                   ),
                   RewardCard(
-                    customIcon: '%',
+                    assetIcon: 'assets/images/discount.png',
                     title: 'Discount 10%',
                     coins: '200 coins',
-                    useCustomIcon: true,
+                    useAsset: true,
                   ),
                 ],
               ),
@@ -104,7 +105,6 @@ void _showRewardPopup(BuildContext context, String title, String coins, {String?
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ✅ แสดงรูปถ้ามี assetIcon
               if (imagePath != null && imagePath.isNotEmpty) 
                 Container(
                   width: 100,
@@ -117,7 +117,7 @@ void _showRewardPopup(BuildContext context, String title, String coins, {String?
                     ),
                   ),
                 )
-              // ✅ ถ้าไม่มี assetIcon แต่มี IconData → แสดง Icon
+              
               else if (icon != null)
                 Container(
                   width: 100,
@@ -130,7 +130,6 @@ void _showRewardPopup(BuildContext context, String title, String coins, {String?
                     child: Icon(icon, size: 60, color: Colors.black),
                   ),
                 )
-              // ✅ ถ้าไม่มี IconData แต่เป็น Custom Text (เช่น "%") → แสดงข้อความแทน
               else if (customIcon != null)
                 Container(
                   width: 100,
@@ -170,7 +169,6 @@ void _showRewardPopup(BuildContext context, String title, String coins, {String?
               ),
               const SizedBox(height: 8),
 
-              // จำนวน Coins ที่ใช้แลก
               Text(
                 coins,
                 style: const TextStyle(
@@ -181,7 +179,6 @@ void _showRewardPopup(BuildContext context, String title, String coins, {String?
               ),
               const SizedBox(height: 16),
 
-              // ปุ่ม "Not yet" และ "Confirm"
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -253,12 +250,11 @@ class RewardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // ✅ เรียก Popup โดยส่งค่าที่เหมาะสมไป
         _showRewardPopup(
           context,
           title,
           coins,
-          imagePath: assetIcon,
+          imagePath: assetIcon,  // ✅ ส่ง assetIcon เสมอ
           icon: icon,
           customIcon: customIcon,
         );
@@ -274,9 +270,7 @@ class RewardCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (!useAsset && !useCustomIcon && icon != null)
-              Icon(icon, size: 84, color: Colors.black)
-            else if (useAsset && assetIcon != null)
+            if (assetIcon != null && assetIcon!.isNotEmpty)  // ✅ ใช้ assetIcon เสมอถ้ามี
               Container(
                 width: 84,
                 height: 84,
@@ -288,7 +282,9 @@ class RewardCard extends StatelessWidget {
                   ),
                 ),
               )
-            else if (useCustomIcon && customIcon != null)
+            else if (icon != null)  // ✅ ถ้าไม่มี assetIcon ให้แสดง Icon แทน
+              Icon(icon, size: 84, color: Colors.black)
+            else if (customIcon != null)  // ✅ ถ้าไม่มี Icon ก็ใช้ Custom Text
               Text(
                 customIcon!,
                 style: const TextStyle(fontSize: 48, color: Colors.black),
@@ -315,3 +311,4 @@ class RewardCard extends StatelessWidget {
     );
   }
 }
+

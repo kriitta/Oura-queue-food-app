@@ -296,7 +296,6 @@ void _showQueuePopup(BuildContext context, String title, String location, String
             mainAxisSize: MainAxisSize.min,
             children: [
               
-              // ปุ่มกดปิด Popup
               Align(
                 alignment: Alignment.topRight,
                 child: IconButton(
@@ -305,14 +304,12 @@ void _showQueuePopup(BuildContext context, String title, String location, String
                 ),
               ),
 
-              // หัวข้อ
               const Text(
                 'Queue ( walk - in )',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
 
-              // โลโก้ร้านอาหาร
               Container(
                 width: 80,
                 height: 80,
@@ -327,7 +324,6 @@ void _showQueuePopup(BuildContext context, String title, String location, String
 
               const SizedBox(height: 12),
 
-              // ชื่อร้านอาหาร
               Text(
                 title,
                 style: const TextStyle(
@@ -338,7 +334,6 @@ void _showQueuePopup(BuildContext context, String title, String location, String
 
               const SizedBox(height: 4),
 
-              // ตำแหน่งร้านอาหาร
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -356,11 +351,9 @@ void _showQueuePopup(BuildContext context, String title, String location, String
 
               const SizedBox(height: 12),
 
-              // แสดงคิว
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // คิวของผู้ใช้
                   Column(
                     children: [
                       const Text(
@@ -377,7 +370,6 @@ void _showQueuePopup(BuildContext context, String title, String location, String
                       ),
                     ],
                   ),
-                  // คิวที่รอ
                   Column(
                     children: [
                       Text(
@@ -399,22 +391,21 @@ void _showQueuePopup(BuildContext context, String title, String location, String
 
               const SizedBox(height: 12),
 
-              // รายละเอียดที่นั่ง / เวลา
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Seat : 2', // 🔥 ปรับให้รองรับค่าที่เปลี่ยนแปลงได้
+                    'Seat : 2', 
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Time : 15:36:23', // 🔥 ปรับให้รองรับเวลาจริงได้
+                    'Time : 15:36:23',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Date : 19 Feb 2025', // 🔥 ปรับให้รองรับวันที่จริงได้
+                    'Date : 19 Feb 2025', 
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -422,7 +413,6 @@ void _showQueuePopup(BuildContext context, String title, String location, String
 
               const SizedBox(height: 12),
 
-              // ข้อความแจ้งเตือน
               const Text(
                 '*ขอสงวนสิทธิ์ในการข้ามคิว กรณีลูกค้าไม่แสดงตน*',
                 style: TextStyle(color: Colors.red, fontSize: 14),
@@ -446,13 +436,12 @@ void _showBookingPopup(BuildContext context, String title, String location, Stri
         ),
         backgroundColor: Colors.white,
         child: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.85, // ✅ ปรับให้กว้างขึ้น
+          width: MediaQuery.of(context).size.width * 0.85,
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ปุ่มกดปิด Popup
                 Align(
                   alignment: Alignment.topRight,
                   child: IconButton(
@@ -461,14 +450,12 @@ void _showBookingPopup(BuildContext context, String title, String location, Stri
                   ),
                 ),
 
-                // หัวข้อ Walk-in / Booking
                 Text(
                   isReservation ? 'Queue ( Booking )' : 'Queue ( walk - in )',
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
 
-                // โลโก้ร้านอาหาร
                 Container(
                   width: 80,
                   height: 80,
@@ -483,7 +470,6 @@ void _showBookingPopup(BuildContext context, String title, String location, Stri
 
                 const SizedBox(height: 12),
 
-                // ชื่อร้านอาหาร
                 Text(
                   title,
                   style: const TextStyle(
@@ -494,7 +480,6 @@ void _showBookingPopup(BuildContext context, String title, String location, Stri
 
                 const SizedBox(height: 4),
 
-                // ตำแหน่งร้านอาหาร
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -512,11 +497,9 @@ void _showBookingPopup(BuildContext context, String title, String location, Stri
 
                 const SizedBox(height: 12),
 
-                // แสดงคิว
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // คิวของผู้ใช้
                     Column(
                       children: [
                         const Text(
@@ -533,7 +516,6 @@ void _showBookingPopup(BuildContext context, String title, String location, Stri
                         ),
                       ],
                     ),
-                    // คิวที่รอหรือเวลา
                     Column(
                       children: [
                         Text(
@@ -555,7 +537,6 @@ void _showBookingPopup(BuildContext context, String title, String location, Stri
 
                 const SizedBox(height: 12),
 
-                // รายละเอียดที่นั่ง / เวลา
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -578,7 +559,6 @@ void _showBookingPopup(BuildContext context, String title, String location, Stri
 
                 const SizedBox(height: 12),
 
-                // ข้อความแจ้งเตือน
                 Text(
                   isReservation
                       ? '*กรุณามาแสดงตัวก่อนถึงเวลาเรียกคิว 10 นาที*'

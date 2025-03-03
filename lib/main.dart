@@ -3,8 +3,14 @@ import 'package:project_final/restaurant.dart';
 import './queue.dart';
 import './reward.dart';
 import './profile.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const QuraApp());
 }
 
@@ -98,12 +104,7 @@ class HomePage extends StatelessWidget {
           ),
         ),
         backgroundColor: const Color(0xFF8B2323),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
-          ),
-        ],
+        
       ),
       body: const RestaurantListView(),
     
@@ -111,97 +112,190 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class RestaurantListView extends StatelessWidget {
+class RestaurantListView extends StatefulWidget {
   const RestaurantListView({super.key});
 
   @override
+  _RestaurantListViewState createState() => _RestaurantListViewState();
+}
+
+class _RestaurantListViewState extends State<RestaurantListView> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  final List<Map<String, dynamic>> _restaurants = [
+    {
+      'image': 'assets/images/famtime.jpeg',
+      'name': 'Fam Time',
+      'location': 'Siam Square Soi 4',
+      'queue': 21,
+      'backgroundColor': const Color(0xFF8B2323),
+      'promotionImages': [
+        'assets/images/promo-fam.jpg',
+        'assets/images/promo-fam2.jpg',
+        'assets/images/promo-fam3.jpg',
+      ],
+      'isAvailable': true,
+    },
+    {
+      'image': 'assets/images/cheevitcheeva.jpeg',
+      'name': 'Cheevit Cheeva',
+      'location': 'Emspheare Fl. 3',
+      'queue': 11,
+      'backgroundColor': Colors.green[400]!,
+      'promotionImages': [
+        'assets/images/promo-cheevit1.jpg',
+        'assets/images/promo-cheevit2.jpg',
+        'assets/images/promo-cheevit3.jpg',
+      ],
+      'isAvailable': true,
+    },
+    {
+      'image': 'assets/images/chatrateen.jpeg',
+      'name': 'Cha Tra Teen',
+      'location': 'Kasetsart University',
+      'queue': 999,
+      'backgroundColor': Colors.red[800]!,
+      'promotionImages': [
+        'assets/images/promo-cha1.jpg',
+        'assets/images/promo-cha2.jpg',
+        'assets/images/promo-cha3.jpg',
+      ],
+      'isAvailable': true,
+    },
+    {
+      'image': 'assets/images/ohkraju.jpeg',
+      'name': 'Oh Kra Ju',
+      'location': 'Central World Fl. 2',
+      'queue': 7,
+      'backgroundColor': Colors.green,
+      'promotionImages': [
+        'assets/images/promo-oh1.jpg',
+        'assets/images/promo-oh2.jpg',
+        'assets/images/promo-oh3.jpg',
+      ],
+      'isAvailable': true,
+    },
+    {
+      'image': 'assets/images/ohkraju.jpeg',
+      'name': 'Oh Kra Ju',
+      'location': 'Central Lardpao Fl. 1',
+      'queue': 0,
+      'backgroundColor': Colors.green,
+      'promotionImages': [
+        'assets/images/promo-oh1.jpg',
+        'assets/images/promo-oh2.jpg',
+        'assets/images/promo-oh3.jpg',
+      ],
+      'isAvailable': false,
+    },
+    {
+      'image': 'assets/images/sizzler.jpeg',
+      'name': 'Sizzler',
+      'location': 'Central World Fl. 7',
+      'queue': 0,
+      'backgroundColor': Colors.green,
+      'promotionImages': [
+        'assets/images/promo-siz1.jpg',
+        'assets/images/promo-siz2.jpg',
+        'assets/images/promo-siz3.jpg',
+      ],
+      'isAvailable': false,
+    },
+  ];
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: StatusChip(text: 'Available', isAvailable: true),
+    List<Map<String, dynamic>> filteredRestaurants = _restaurants
+        .where((restaurant) =>
+            restaurant['name'].toLowerCase().contains(_searchQuery.toLowerCase()))
+        .toList();
+
+    return Column(
+      children: [
+        
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: "Search restaurant",
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF8B2323)),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, color: Color(0xFF8B2323)),
+                      onPressed: () {
+                        setState(() {
+                          _searchQuery = '';
+                          _searchController.clear();
+                        });
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.all(12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Color(0xFF8B2323)),
+                
+              ),
+            ),
+            style: const TextStyle(color: Color(0xFF8B2323)),
           ),
-          const RestaurantCard(
-            image: 'assets/images/famtime.jpeg',
-            name: 'Fam Time',
-            location: 'Siam Square Soi 4',
-            queue: 21,
-            backgroundColor: Color(0xFF8B2323),
-            promotionImages: [
-              'assets/images/promo-fam.jpg',
-              'assets/images/promo-fam2.jpg',
-              'assets/images/promo-fam3.jpg',
-            ],
+        ),
+
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Available Section
+                if (filteredRestaurants.any((r) => r['isAvailable']))
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: StatusChip(text: 'Available', isAvailable: true),
+                  ),
+                ...filteredRestaurants
+                    .where((r) => r['isAvailable'])
+                    .map((restaurant) => RestaurantCard(
+                          image: restaurant['image'],
+                          name: restaurant['name'],
+                          location: restaurant['location'],
+                          queue: restaurant['queue'],
+                          backgroundColor: restaurant['backgroundColor'],
+                          promotionImages: List<String>.from(restaurant['promotionImages']),
+                        ))
+                    .toList(),
+
+                // Unavailable Section
+                if (filteredRestaurants.any((r) => !r['isAvailable']))
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: StatusChip(text: 'Unavailable', isAvailable: false),
+                  ),
+                ...filteredRestaurants
+                    .where((r) => !r['isAvailable'])
+                    .map((restaurant) => RestaurantCard(
+                          image: restaurant['image'],
+                          name: restaurant['name'],
+                          location: restaurant['location'],
+                          queue: restaurant['queue'],
+                          backgroundColor: restaurant['backgroundColor'],
+                          promotionImages: List<String>.from(restaurant['promotionImages']),
+                          isAvailable: false,
+                        ))
+                    .toList(),
+              ],
+            ),
           ),
-          RestaurantCard(
-            image: 'assets/images/cheevitcheeva.jpeg',
-            name: 'Cheevit Cheeva',
-            location: 'Emspheare Fl. 3',
-            queue: 11,
-            backgroundColor: Colors.green[400]!,
-            promotionImages: const [
-              'assets/images/promo-cheevit1.jpg',
-              'assets/images/promo-cheevit2.jpg',
-              'assets/images/promo-cheevit3.jpg',
-            ],
-          ),
-          RestaurantCard(
-            image: 'assets/images/chatrateen.jpeg',
-            name: 'Cha Tra Mue',
-            location: 'Kasetsart University',
-            queue: 999,
-            backgroundColor: Colors.red[800]!,
-            promotionImages: const [
-              'assets/images/promo-cha1.jpg',
-              'assets/images/promo-cha2.jpg',
-              'assets/images/promo-cha3.jpg',
-            ],
-          ),
-          const RestaurantCard(
-            image: 'assets/images/ohkraju.jpeg',
-            name: 'Oh Kra Ju',
-            location: 'Central World Fl. 2',
-            queue: 7,
-            backgroundColor: Colors.green,
-            promotionImages: [
-              'assets/images/promo-oh1.jpg',
-              'assets/images/promo-oh2.jpg',
-              'assets/images/promo-oh3.jpg',
-            ],
-          ),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: StatusChip(text: 'Unavailable', isAvailable: false),
-          ),
-          const RestaurantCard(
-            image: 'assets/images/ohkraju.jpeg',
-            name: 'Oh Kra Ju',
-            location: 'Central Lardpao Fl. 1',
-            queue: 0,
-            isAvailable: false,
-            promotionImages: [
-              'assets/images/promo-oh1.jpg',
-              'assets/images/promo-oh2.jpg',
-              'assets/images/promo-oh3.jpg',
-            ],
-          ),
-          const RestaurantCard(
-            image: 'assets/images/sizzler.jpeg',
-            name: 'Sizzler',
-            location: 'Central World Fl. 7',
-            queue: 0,
-            isAvailable: false,
-            promotionImages: [
-              'assets/images/promo-siz1.jpg',
-              'assets/images/promo-siz2.jpg',
-              'assets/images/promo-siz3.jpg',
-            ],
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

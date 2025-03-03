@@ -148,7 +148,6 @@ void _showRewardPopup(BuildContext context, String title, String coins, {String?
 
               const SizedBox(height: 16),
 
-              // ชื่อ Reward
               Text(
                 title,
                 style: const TextStyle(
@@ -159,10 +158,8 @@ void _showRewardPopup(BuildContext context, String title, String coins, {String?
               ),
               const SizedBox(height: 8),
 
-              // เส้นคั่น
               const Divider(height: 20, color: Colors.black26),
 
-              // คำถามยืนยันการรับ Reward
               const Text(
                 'Do you want to get this reward ?',
                 style: TextStyle(fontSize: 16),
@@ -200,7 +197,7 @@ void _showRewardPopup(BuildContext context, String title, String coins, {String?
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      // TODO: ใส่ฟังก์ชันการยืนยันการแลกรางวัล
+                      // ใส่ฟังก์ชันการยืนยันการแลกรางวัล
                       Navigator.of(context).pop();
                     },
                     style: ElevatedButton.styleFrom(
@@ -254,7 +251,7 @@ class RewardCard extends StatelessWidget {
           context,
           title,
           coins,
-          imagePath: assetIcon,  // ✅ ส่ง assetIcon เสมอ
+          imagePath: assetIcon, 
           icon: icon,
           customIcon: customIcon,
         );
@@ -270,7 +267,7 @@ class RewardCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (assetIcon != null && assetIcon!.isNotEmpty)  // ✅ ใช้ assetIcon เสมอถ้ามี
+            if (assetIcon != null && assetIcon!.isNotEmpty)
               Container(
                 width: 84,
                 height: 84,
@@ -282,9 +279,9 @@ class RewardCard extends StatelessWidget {
                   ),
                 ),
               )
-            else if (icon != null)  // ✅ ถ้าไม่มี assetIcon ให้แสดง Icon แทน
+            else if (icon != null)
               Icon(icon, size: 84, color: Colors.black)
-            else if (customIcon != null)  // ✅ ถ้าไม่มี Icon ก็ใช้ Custom Text
+            else if (customIcon != null) 
               Text(
                 customIcon!,
                 style: const TextStyle(fontSize: 48, color: Colors.black),

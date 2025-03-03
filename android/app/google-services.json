@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "676367016014",
+    "project_id": "oura-app123",
+    "storage_bucket": "oura-app123.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:676367016014:android:1a3c6cc7011d33745e231f",
+        "android_client_info": {
+          "package_name": "com.example.project_final"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEwkJOGsiuGqo1j9K8bvpEzYCKzMNVvNw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

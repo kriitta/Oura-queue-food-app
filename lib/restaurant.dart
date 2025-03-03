@@ -27,315 +27,419 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
   final _pageController = PageController();
 
   void _showQueueNowDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        int numberOfPersons = 1;
-        return StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            content: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.8,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Queue Now',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Number of persons:',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle, color: Color(0xFF8B2323)),
-                        iconSize: 36,
-                        onPressed: () {
-                          setState(() {
-                            if (numberOfPersons > 1) numberOfPersons--;
-                          });
-                        },
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.black54),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          numberOfPersons.toString(),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle, color: Color(0xFF8B2323)),
-                        iconSize: 36,
-                        onPressed: () {
-                          setState(() {
-                            if (numberOfPersons < 20) numberOfPersons++;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF8B2323),
-                          ),
-                        ),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8B2323),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: () {
-                          // Action for confirm
-                          print('Number of Persons: $numberOfPersons');
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(fontSize: 16, color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showPromotionPopup(String imagePath) {
   showDialog(
     context: context,
     builder: (context) {
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // รูปโปรโมชั่นแบบเต็มจอ
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                imagePath,
-                fit: BoxFit.contain, // ปรับให้ภาพแสดงเต็มที่โดยไม่ถูกครอป
-              ),
-            ),
+      int numberOfPersons = 1;
+      String selectedTableType = '1-2 persons';
 
-            // ปุ่มปิดที่มุมขวาบน
-            Positioned(
-              top: 10,
-              right: 10,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
+      void updateNumberOfPersons(String tableType) {
+        setState(() {
+          selectedTableType = tableType;
+          if (tableType == '1-2 persons') {
+            numberOfPersons = 1;
+          } else if (tableType == '3-6 persons') {
+            numberOfPersons = 3;
+          } else if (tableType == '7-12 persons') {
+            numberOfPersons = 7;
+          }
+        });
+      }
+
+      return StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Queue Now',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                const Text(
+                  'Type of tables:',
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _buildTableTypeButton(
+                      '1-2 persons',
+                      Icons.people,
+                      selectedTableType,
+                      (value) {
+                        setState(() {
+                          updateNumberOfPersons(value);
+                        });
+                      },
+                    ),
+                    _buildTableTypeButton(
+                      '3-6 persons',
+                      Icons.group,
+                      selectedTableType,
+                      (value) {
+                        setState(() {
+                          updateNumberOfPersons(value);
+                        });
+                      },
+                    ),
+                    _buildTableTypeButton(
+                      '7-12 persons',
+                      Icons.groups,
+                      selectedTableType,
+                      (value) {
+                        setState(() {
+                          updateNumberOfPersons(value);
+                        });
+                      },
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // Number of persons
+                const Text(
+                  'Number of persons:',
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle, color: Color(0xFF8B2323)),
+                      iconSize: 36,
+                      onPressed: () {
+                        setState(() {
+                          int minPersons = selectedTableType == '1-2 persons'
+                              ? 1
+                              : selectedTableType == '3-6 persons'
+                                  ? 3
+                                  : 7;
+                          if (numberOfPersons > minPersons) numberOfPersons--;
+                        });
+                      },
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black54),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        numberOfPersons.toString(),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle, color: Color(0xFF8B2323)),
+                      iconSize: 36,
+                      onPressed: () {
+                        setState(() {
+                          int maxPersons = selectedTableType == '1-2 persons'
+                              ? 2
+                              : selectedTableType == '3-6 persons'
+                                  ? 6
+                                  : 12;
+                          if (numberOfPersons < maxPersons) numberOfPersons++;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              side: const BorderSide(
+                                  color: Color(0xFF8B2323), width: 1))),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF8B2323),
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B2323),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      onPressed: () {
+                        print('Table Type: $selectedTableType, Number of Persons: $numberOfPersons');
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text(
+                        'Confirm',
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       );
     },
   );
 }
 
-  void _showQueueInAdvanceDialog() {
-  // Initialize with current time
-  TimeOfDay selectedTime = TimeOfDay.now();
-  int persons = 1;
 
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+  Widget _buildTableTypeButton(String type, IconData icon, String selectedType,
+      Function(String) onSelect) {
+    bool isSelected = selectedType == type;
+    return InkWell(
+      onTap: () => onSelect(type),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          border: Border.all(color: isSelected ? Color(0xFF8B2323) : Colors.grey),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: isSelected ? const Color(0xFF8B2323) : Colors.grey),
+            const SizedBox(height: 5),
+            Text(
+              type,
+              style: TextStyle(
+                color: isSelected ? Colors.brown : Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            content: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.8,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Queue in advance',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPromotionPopup(String imagePath) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  imagePath,
+                  fit: BoxFit.contain,
+                ),
+              ),
+
+              Positioned(
+                top: 10,
+                right: 10,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showQueueInAdvanceDialog() {
+    TimeOfDay selectedTime = TimeOfDay.now();
+    int persons = 1;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              content: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.8,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Queue in advance',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  // Time Selection
-                  const Text(
-                    'Select booking time:',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
-                  InkWell(
-                    onTap: () async {
-                      final TimeOfDay? picked = await showTimePicker(
-                        context: context,
-                        initialTime: selectedTime,
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: const ColorScheme.light(
-                                primary: Color(0xFF8B2323),
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      'Select booking time:',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: () async {
+                        final TimeOfDay? picked = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: const ColorScheme.light(
+                                  primary: Color(0xFF8B2323),
+                                ),
                               ),
-                            ),
-                            child: child!,
-                          );
-                        },
-                      );
-                      if (picked != null) {
-                        setState(() {
-                          selectedTime = picked;
-                        });
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFF8B2323)),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${selectedTime.hour.toString().padLeft(2, '0')} : ${selectedTime.minute.toString().padLeft(2, '0')}',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF8B2323),
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Number of Persons
-                  const Text(
-                    'Number of persons:',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle, color: Color(0xFF8B2323)),
-                        iconSize: 36,
-                        onPressed: () {
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null) {
                           setState(() {
-                            if (persons > 1) persons--;
+                            selectedTime = picked;
                           });
-                        },
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.black54),
+                          border: Border.all(color: const Color(0xFF8B2323)),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          persons.toString(),
+                          '${selectedTime.hour.toString().padLeft(2, '0')} : ${selectedTime.minute.toString().padLeft(2, '0')}',
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle, color: Color(0xFF8B2323)),
-                        iconSize: 36,
-                        onPressed: () {
-                          setState(() {
-                            if (persons < 20) persons++;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(
-                            fontSize: 16,
                             color: Color(0xFF8B2323),
                           ),
                         ),
                       ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8B2323),
-                          shape: RoundedRectangleBorder(
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      'Number of persons:',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle,
+                              color: Color(0xFF8B2323)),
+                          iconSize: 36,
+                          onPressed: () {
+                            setState(() {
+                              if (persons > 1) persons--;
+                            });
+                          },
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.black54),
                             borderRadius: BorderRadius.circular(10),
                           ),
+                          child: Text(
+                            persons.toString(),
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                        onPressed: () {
-                          // Handle the advance booking
-                          print('Advance Booking: ${selectedTime.format(context)}, Persons: $persons');
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle,
+                              color: Color(0xFF8B2323)),
+                          iconSize: 36,
+                          onPressed: () {
+                            setState(() {
+                              if (persons < 20) persons++;
+                            });
+                          },
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF8B2323),
+                            ),
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B2323),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () {
+                            print(
+                                'Advance Booking: ${selectedTime.format(context)}, Persons: $persons');
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text(
+                            'Confirm',
+                            style: TextStyle(fontSize: 16, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
-      );
-    },
-  );
-}
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -362,7 +466,6 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Restaurant Logo
               Container(
                 width: 150,
                 height: 150,
@@ -384,7 +487,6 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
 
               const SizedBox(height: 20),
 
-              // Restaurant Name
               Text(
                 widget.name,
                 style: const TextStyle(
@@ -394,7 +496,6 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               ),
               const SizedBox(height: 10),
 
-              // Location
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -411,7 +512,6 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               ),
               const SizedBox(height: 5),
 
-              // Queue
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -429,7 +529,6 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
 
               const SizedBox(height: 30),
 
-              // Reservation Type Title
               const Text(
                 'Choose the type of reservation',
                 style: TextStyle(
@@ -439,7 +538,6 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               ),
               const SizedBox(height: 20),
 
-              // Reservation Options
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -457,7 +555,6 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               ),
               const SizedBox(height: 30),
 
-              // Promotion Section
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -470,41 +567,39 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
               ),
               const SizedBox(height: 20),
 
-              
-SizedBox(
-  height: 200,
-  child: Stack(
-    alignment: Alignment.center,
-    children: [
-      PageView.builder(
-        controller: _pageController,
-        itemCount: widget.promotionImages.length,
-        itemBuilder: (context, index) {
-          return GestureDetector(
-            onTap: () {
-              _showPromotionPopup(widget.promotionImages[index]);
-            },
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                image: DecorationImage(
-                  image: AssetImage(widget.promotionImages[index]),
-                  fit: BoxFit.cover,
+              SizedBox(
+                height: 200,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    PageView.builder(
+                      controller: _pageController,
+                      itemCount: widget.promotionImages.length,
+                      itemBuilder: (context, index) {
+                        return GestureDetector(
+                          onTap: () {
+                            _showPromotionPopup(widget.promotionImages[index]);
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(15),
+                              image: DecorationImage(
+                                image:
+                                    AssetImage(widget.promotionImages[index]),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
-            ),
-          );
-        },
-      ),
-    ],
-  ),
-),
-
 
               const SizedBox(height: 20),
 
-              // Page Indicator
               SmoothPageIndicator(
                 controller: _pageController,
                 count: widget.promotionImages.length,

@@ -1,66 +1,101 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
-class EditRestaurantScreen extends StatelessWidget {
+class EditRestaurantScreen extends StatefulWidget {
+  @override
+  _EditRestaurantScreenState createState() => _EditRestaurantScreenState();
+}
+
+class _EditRestaurantScreenState extends State<EditRestaurantScreen> {
+  File? _image;
+
+  Future<void> _pickImage() async {
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+      });
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _image = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, 
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0, 
-        leading: Row(
-          children: [
-            IconButton(
-              icon: Icon(Icons.arrow_back, color: Colors.black, size: 28),
-              onPressed: () => Navigator.pop(context),
-            ),
-            Text(
-              "back", 
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-                color: Colors.black,
-              ),
-            ),
-          ],
-        ),
-        leadingWidth: 120,
-      ),
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Column(
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(color: Colors.black12, blurRadius: 5, spreadRadius: 1),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundImage: AssetImage('assets/images/famtime.jpeg'), 
-                    backgroundColor: Colors.transparent,
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: Color(0xFF8B2323)),
+                    onPressed: () => Navigator.pop(context),
                   ),
-                  SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(color: Color(0xFF8B2323)),
-                      ),
-                    ),
-                    child: Text(
-                      "Upload Image",
-                      style: TextStyle(color: Color(0xFF8B2323)),
-                    ),
+                  Text(
+                    'Edit Restaurant',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
+                  SizedBox(width: 48),
                 ],
               ),
             ),
-            SizedBox(height: 20),
-            _buildTextField("Name Restaurant", "Fam Time"),
-            SizedBox(height: 15),
-            _buildTextField("Location", "Siam Square Soi 4"),
+            Expanded(
+              child: Container(
+                color: Colors.white,
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Column(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundImage: _image != null ? FileImage(_image!) : AssetImage('assets/images/famtime.jpeg') as ImageProvider,
+                            backgroundColor: Colors.transparent,
+                          ),
+                          SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              OutlinedButton(
+                                onPressed: _pickImage,
+                                child: Text('Upload Image'),
+                              ),
+                              SizedBox(width: 10),
+                              if (_image != null)
+                                OutlinedButton(
+                                  onPressed: _removeImage,
+                                  child: Text('Delete Image'),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    _buildTextField("Name Restaurant", "Fam Time"),
+                    SizedBox(height: 15),
+                    _buildTextField("Location", "Siam Square Soi 4"),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

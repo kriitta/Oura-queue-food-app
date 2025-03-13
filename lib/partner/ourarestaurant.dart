@@ -4,7 +4,7 @@ import 'package:project_final/partner/bottom_nav.dart';
 import '../firebase_options.dart';
 import 'edit_restaurant_screen.dart';
 import 'edit_promotion_screen.dart';
-import 'manage_reservation_screen.dart'; 
+import 'manage_reservation_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,117 +32,112 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // พื้นหลังสีขาว
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'Oura',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
+        title: Text(
+          'Oura',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: const Color(0xFF8B2323),
-        iconTheme: IconThemeData(color: Colors.white),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 24, vertical: 16),
-          child: Column(
-            children: [
-              Container(
-                padding: EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(40.0),
-                      child: Image.asset(
-                        'assets/images/famtime.jpeg',
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      'Fam Time',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    Text('📍 Siam Square Soi 4',
-                        style: TextStyle(color: Colors.grey)),
-                    SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        queueInfo(
-                            title: 'Queue Now', queueNum: '#Q097', seat: '2'),
-                        queueInfo(
-                            title: 'Next Queue', queueNum: '#Q098', seat: '4'),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        queueInfo(
-                            title: 'Latest Queue',
-                            queueNum: '#Q120',
-                            seat: '5'),
-                        queueInfo(
-                            title: 'Remaining', queueNum: '23', seat: 'Queue'),
-                      ],
-                    ),
-                    SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        OutlinedButton(
-                          onPressed: () {},
-                          style: OutlinedButton.styleFrom(
-                            shape: CircleBorder(),
-                            padding: EdgeInsets.all(16),
-                          ),
-                          child: Icon(Icons.arrow_back),
-                        ),
-                        OutlinedButton(
-                          onPressed: () {},
-                          style: OutlinedButton.styleFrom(
-                            shape: CircleBorder(),
-                            padding: EdgeInsets.all(16),
-                          ),
-                          child: Icon(Icons.arrow_forward),
-                        ),
-                      ],
-                    )
-                  ],
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView(
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
+                child: Text(
+                  'Queue',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+            buildTableCard(
+              title: 'Table type A : 1 - 2 persons',
+              queueNow: '#A097',
+              queueNext: '#A098',
+              seatNow: '2',
+              seatNext: '1',
+            ),
+            buildTableCard(
+              title: 'Table type B : 3 - 6 persons',
+              queueNow: '#B032',
+              queueNext: '#B033',
+              seatNow: '3',
+              seatNext: '6',
+            ),
+            buildTableCard(
+              title: 'Table type C : 7 - 12 persons',
+              queueNow: '#C027',
+              queueNext: '#C028',
+              seatNow: '9',
+              seatNext: '11',
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: BottomNavBar(currentIndex: 0),
     );
   }
 
-  // Widget สำหรับข้อมูล Queue
-  Widget queueInfo(
-      {required String title, required String queueNum, required String seat}) {
+  Widget buildTableCard({
+    required String title,
+    required String queueNow,
+    required String queueNext,
+    required String seatNow,
+    required String seatNext,
+  }) {
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      elevation: 3,
+      margin: EdgeInsets.only(bottom: 16),
+      color: Colors.white, // ตั้งค่าสีพื้นหลังของ Card ให้เป็นสีขาว
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                queueInfo(title: 'Queue Now', queueNum: queueNow, seat: seatNow),
+                queueInfo(title: 'Next Queue', queueNum: queueNext, seat: seatNext),
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                navigationButton(Icons.arrow_back, 'Pass Queue'),
+                navigationButton(Icons.arrow_forward, 'Next Queue'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget queueInfo({required String title, required String queueNum, required String seat}) {
     return Column(
       children: [
         Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
@@ -154,6 +149,23 @@ class HomeScreen extends StatelessWidget {
       ],
     );
   }
+
+  Widget navigationButton(IconData icon, String label) {
+    return Column(
+      children: [
+        OutlinedButton(
+          onPressed: () {},
+          style: OutlinedButton.styleFrom(
+            shape: CircleBorder(),
+            padding: EdgeInsets.all(16),
+          ),
+          child: Icon(icon, color: Colors.black),
+        ),
+        SizedBox(height: 5),
+        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
 }
 
 class ReservationScreen extends StatefulWidget {
@@ -162,8 +174,6 @@ class ReservationScreen extends StatefulWidget {
 }
 
 class _ReservationScreenState extends State<ReservationScreen> {
-// เริ่มต้นที่หน้า Reservation
-
   List<Map<String, String>> reservations = [
     {'id': '#R025', 'seat': '2', 'time': '17:30', 'status': 'complete'},
     {'id': '#R026', 'seat': '4', 'time': '18:20', 'status': '-'},
@@ -175,7 +185,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
       reservations[index]['status'] = 'complete';
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -191,18 +200,14 @@ class _ReservationScreenState extends State<ReservationScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white, // พื้นหลังสีขาว
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        automaticallyImplyLeading: false, // ปิดปุ่มย้อนกลับ
-        title: Align(
-          alignment: Alignment.centerLeft, // ชิดซ้าย
-          child: Text(
-            'Oura',
-            style: TextStyle(
-              color: Colors.white, // สีขาว
-              fontSize: 22, // ขนาดตัวอักษร
-              fontWeight: FontWeight.bold, // ตัวหนา
-            ),
+        title: Text(
+          'Oura',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: const Color(0xFF8B2323),
@@ -212,7 +217,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // โลโก้ร้าน & ชื่อร้าน
             Row(
               children: [
                 ClipRRect(
@@ -244,21 +248,17 @@ class _ReservationScreenState extends State<ReservationScreen> {
             ),
             SizedBox(height: 16),
 
-            // คิวล่าสุด
-            if (latestReservation != null) ...[
-              Text(
-                'Reservation',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              buildReservationCard(latestReservation!, 0),
-            ],
+            Text(
+              'Reservation',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 10),
+            if (latestReservation != null) buildReservationCard(latestReservation!, 0),
             SizedBox(height: 20),
 
-            // Upcoming
             if (upcomingReservations.isNotEmpty) ...[
               Text(
-                'Upcoming ..',
+                'Upcoming',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 10),
@@ -266,144 +266,90 @@ class _ReservationScreenState extends State<ReservationScreen> {
                 child: ListView.builder(
                   itemCount: upcomingReservations.length,
                   itemBuilder: (context, index) {
-                    return buildReservationCard(
-                        upcomingReservations[index], index + 1);
+                    return buildReservationCard(upcomingReservations[index], index + 1);
                   },
                 ),
               ),
             ],
 
-            // ปุ่ม Next
             Center(
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  shape: CircleBorder(),
-                  padding: EdgeInsets.all(16),
-                  backgroundColor: Color(0xFF8B2323),
-                ),
-                child: Icon(Icons.play_arrow, color: Colors.white),
+              child: Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      shape: CircleBorder(),
+                      padding: EdgeInsets.all(16),
+                      backgroundColor: Color(0xFF8B2323),
+                    ),
+                    child: Icon(Icons.play_arrow, color: Colors.white),
+                  ),
+                  SizedBox(height: 5),
+                  Text(
+                    'Next',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
       bottomNavigationBar: BottomNavBar(currentIndex: 1),
-
-
     );
   }
 
-  // **สร้างการ์ดคูปอง**
   Widget buildReservationCard(Map<String, String> res, int index) {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Card(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 5,
-            spreadRadius: 1,
-          ),
-        ],
       ),
-      child: Stack(
-        children: [
-          Row(
-            children: [
-              // **ขอบซ้ายสีแดง**
-              Container(
-                width: 8,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Color(0xFF8B2323),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(15),
-                    bottomLeft: Radius.circular(15),
-                  ),
-                ),
-              ),
-              // **รายละเอียดคิว**
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        res['id']!,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text("Seat : ${res['seat']}"),
-                      Text("Booked Time : ${res['time']}"),
-                      Row(
-                        children: [
-                          Text("Status : ${res['status']}"),
-                          SizedBox(width: 5),
-                          Icon(Icons.edit, size: 16, color: Colors.grey),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // **ปุ่มติ๊กถูก**
-              GestureDetector(
-                onTap: () => markAsComplete(index),
-                child: Container(
-                  width: 60,
-                  height: 100,
-                  child: CustomPaint(
-                    painter: DashedBorderPainter(),
-                    child: Center(
-                      child: Icon(
-                        Icons.check,
-                        color: res['status'] == 'complete'
-                            ? Colors.green
-                            : Colors.grey,
-                        size: 30,
-                      ),
+      elevation: 3,
+      margin: EdgeInsets.symmetric(vertical: 8),
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    res['id']!,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
+                  Text("Seat : ${res['seat']}"),
+                  Text("Booked Time : ${res['time']}"),
+                  Text("Status : ${res['status']}"),
+                ],
               ),
-            ],
-          ),
-        ],
+            ),
+            Column(
+              children: [
+                GestureDetector(
+                  onTap: () => markAsComplete(index),
+                  child: Icon(
+                    Icons.check,
+                    color: res['status'] == 'complete' ? Colors.green : Colors.grey,
+                    size: 30,
+                  ),
+                ),
+                SizedBox(height: 5),
+                Text(
+                  'Complete',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
-}
-
-// **สร้างเส้นประ**
-class DashedBorderPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()
-      ..color = Colors.grey
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    double dashWidth = 5, dashSpace = 5;
-    double startY = 10;
-
-    while (startY < size.height - 10) {
-      canvas.drawLine(
-        Offset(size.width, startY),
-        Offset(size.width, startY + dashWidth),
-        paint,
-      );
-      startY += dashWidth + dashSpace;
-    }
-  }
-
-  @override
-  bool shouldRepaint(DashedBorderPainter oldDelegate) => false;
 }
 
 class SettingScreen extends StatelessWidget {
@@ -411,55 +357,92 @@ class SettingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'Oura',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
+        title: Text(
+          'Oura',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: const Color(0xFF8B2323),
-        iconTheme: IconThemeData(color: Colors.white),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            buildSettingButton(context, "แก้ไขข้อมูลร้าน", EditRestaurantScreen()),
-            SizedBox(height: 20),
-            buildSettingButton(context, "แก้ไข promotion", EditPromotionScreen()),
-            SizedBox(height: 20),
-            buildSettingButton(context, "จัดการเวลาจองล่วงหน้า", ManageReservationScreen()),
-          ],
+      body: Container(
+        color: Colors.white,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+          child: Column(
+            children: [
+              buildSettingCard(
+                context,
+                icon: Icons.storefront,
+                title: "Edit Restaurant Info",
+                page: EditRestaurantScreen(),
+              ),
+              SizedBox(height: 15),
+              buildSettingCard(
+                context,
+                icon: Icons.local_offer,
+                title: "Edit Promotions",
+                page: EditPromotionScreen(),
+              ),
+              SizedBox(height: 15),
+              buildSettingCard(
+                context,
+                icon: Icons.schedule,
+                title: "Manage Reservations",
+                page: ManageReservationScreen(),
+              ),
+              SizedBox(height: 30),
+              buildLogoutButton(context),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: BottomNavBar(currentIndex: 2),
     );
   }
 
-  Widget buildSettingButton(BuildContext context, String title, Widget page) {
-    return ElevatedButton(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => page),
-        );
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Color(0xFF8B2323), // สีแดงเข้ม
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20), // ขอบโค้ง
-        ),
-        minimumSize: Size(double.infinity, 50), // ปรับขนาดปุ่ม
+  Widget buildSettingCard(BuildContext context, {required IconData icon, required String title, required Widget page}) {
+    return Card(
+      color: Colors.white, // เปลี่ยนพื้นหลังของ Card เป็นสีขาวให้ดู minimal
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
       ),
-      child: Text(
-        title,
+      elevation: 3,
+      child: ListTile(
+        leading: Icon(icon, color: Color(0xFF8B2323)),
+        title: Text(
+          title,
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        trailing: Icon(Icons.arrow_forward_ios, color: Colors.black54),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => page),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget buildLogoutButton(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: () {
+        // Perform Logout Action
+      },
+      icon: Icon(Icons.logout, color: Colors.white),
+      label: Text(
+        "Log out",
         style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Color(0xFF8B2323),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        minimumSize: Size(double.infinity, 50),
       ),
     );
   }

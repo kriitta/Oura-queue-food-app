@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:project_final/restaurant.dart';
-import './queue.dart';
-import './reward.dart';
-import './profile.dart';
+import 'package:project_final/user/restaurant.dart';
+import 'queue.dart';
+import 'reward.dart';
+import 'profile.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import '../firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

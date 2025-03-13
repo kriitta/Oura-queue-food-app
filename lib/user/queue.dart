@@ -395,6 +395,11 @@ void _showQueuePopup(BuildContext context, String title, String location, String
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
+                    'Table : A', 
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
                     'Seat : 2', 
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),

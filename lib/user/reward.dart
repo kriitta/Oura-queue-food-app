@@ -1,7 +1,59 @@
 import 'package:flutter/material.dart';
 
-class RewardPage extends StatelessWidget {
+class RewardPage extends StatefulWidget {
   const RewardPage({super.key});
+
+  @override
+  State<RewardPage> createState() => _RewardPageState();
+}
+
+class _RewardPageState extends State<RewardPage> {
+  void _showHistoryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Redemption History',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: SizedBox(
+            height: 200,
+            width: 300, 
+            child: ListView(
+              shrinkWrap: true,
+              children: const [
+                ListTile(
+                  leading: Icon(Icons.card_giftcard, color: Colors.brown),
+                  title: Text('Gift Voucher'),
+                  subtitle: Text('Redeemed on Mar 5, 2025'),
+                  trailing: Text('-150 coins', style: TextStyle(color: Colors.red)),
+                ),
+                ListTile(
+                  leading: Icon(Icons.confirmation_num, color: Colors.brown),
+                  title: Text('Discount 20%'),
+                  subtitle: Text('Redeemed on Feb 28, 2025'),
+                  trailing: Text('-300 coins', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Close',
+                style: TextStyle(color: Color(0xFF8B2323)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,18 +65,19 @@ class RewardPage extends StatelessWidget {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: Colors.white
+            color: Colors.white,
           ),
         ),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.history, color: Colors.white, size: 30),
+          onPressed: _showHistoryDialog,
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
@@ -45,7 +98,6 @@ class RewardPage extends StatelessWidget {
           ),
         ],
       ),
-            
       body: Column(
         children: [
           Expanded(
@@ -90,6 +142,12 @@ class RewardPage extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+
 
 void _showRewardPopup(BuildContext context, String title, String coins, {String? imagePath, IconData? icon, String? customIcon}) {
   showDialog(
@@ -221,7 +279,6 @@ void _showRewardPopup(BuildContext context, String title, String coins, {String?
     },
   );
 }
-
 
 class RewardCard extends StatelessWidget {
   final IconData? icon;

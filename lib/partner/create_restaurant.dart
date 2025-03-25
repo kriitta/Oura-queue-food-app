@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../system/main.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -15,18 +18,20 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.brown,
       ),
-      home: CreateRestaurantPage(),
+      home: const CreateRestaurantPage(),
     );
   }
 }
 
 class CreateRestaurantPage extends StatefulWidget {
+  const CreateRestaurantPage({super.key});
+
   @override
   _CreateRestaurantPageState createState() => _CreateRestaurantPageState();
 }
 
 class _CreateRestaurantPageState extends State<CreateRestaurantPage> {
-  File? _restaurantImage;
+  File? _restaurantImage;  // เพิ่มการประกาศตัวแปร _restaurantImage
   File? _promotionImage;
 
   final TextEditingController _nameController = TextEditingController();
@@ -41,7 +46,7 @@ class _CreateRestaurantPageState extends State<CreateRestaurantPage> {
         if (isPromotion) {
           _promotionImage = File(pickedFile.path);
         } else {
-          _restaurantImage = File(pickedFile.path);
+          _restaurantImage = File(pickedFile.path); // เก็บภาพร้าน
         }
       });
     }
@@ -51,8 +56,8 @@ class _CreateRestaurantPageState extends State<CreateRestaurantPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFF8B2323),
-        title: Align(
+        backgroundColor: const Color(0xFF8B2323),
+        title: const Align(
           alignment: Alignment.centerLeft,
           child: Text(
             "Oura",
@@ -60,19 +65,19 @@ class _CreateRestaurantPageState extends State<CreateRestaurantPage> {
                 fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22),
           ),
         ),
+        automaticallyImplyLeading: false,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, // ชิดซ้าย
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title "Create Restaurant"
-              Text(
+              const Text(
                 "Create Restaurant",
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               // โลโก้ร้าน (รูปวงกลมอยู่ตรงกลาง)
               Center(
@@ -84,83 +89,77 @@ class _CreateRestaurantPageState extends State<CreateRestaurantPage> {
                         radius: 50,
                         backgroundColor: Colors.grey[300],
                         backgroundImage: _restaurantImage != null
-                            ? FileImage(_restaurantImage!)
+                            ? FileImage(_restaurantImage!) // ใช้ _restaurantImage ที่ประกาศไว้
                             : null,
                         child: _restaurantImage == null
-                            ? Icon(Icons.camera_alt,
-                                size: 40, color: Colors.grey[700])
+                            ? Icon(Icons.camera_alt, size: 40, color: Colors.grey[700])
                             : null,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     TextButton(
                       onPressed: () => _pickImage(false),
                       style: TextButton.styleFrom(
-                        foregroundColor: Color(0xFF8B2323),
-                        side: BorderSide(color: Color(0xFF8B2323)),
+                        foregroundColor: const Color(0xFF8B2323),
+                        side: const BorderSide(color: Color(0xFF8B2323)),
                       ),
-                      child: Text("Upload Image"),
+                      child: const Text("Upload Image"),
                     ),
                   ],
                 ),
               ),
 
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               // ช่องกรอกข้อมูลร้าน
               _buildTextField("Name Restaurant", _nameController),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               _buildTextField("Location", _locationController),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
 
               // ส่วนอัปโหลดรูปโปรโมชัน
-              Text("Promotion", style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height: 5),
+              const Text("Promotion", style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 5),
               GestureDetector(
                 onTap: () => _pickImage(true),
                 child: Container(
                   height: 120,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    border: Border.all(color: Color(0xFF8B2323)),
+                    border: Border.all(color: const Color(0xFF8B2323)),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: _promotionImage != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child:
-                              Image.file(_promotionImage!, fit: BoxFit.cover),
+                          child: Image.file(_promotionImage!, fit: BoxFit.cover),
                         )
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text("Upload an image for promotion"),
-                            SizedBox(height: 8),
+                            const Text("Upload an image for promotion"),
+                            const SizedBox(height: 8),
                             OutlinedButton(
                               onPressed: () => _pickImage(true),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: Color(0xFF8B2323),
-                                side: BorderSide(color: Color(0xFF8B2323)),
+                                foregroundColor: const Color(0xFF8B2323),
+                                side: const BorderSide(color: Color(0xFF8B2323)),
                               ),
-                              child: Text("Upload Image"),
+                              child: const Text("Upload Image"),
                             ),
                           ],
                         ),
                 ),
               ),
 
-              // ปุ่ม Back & Create
-
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildOutlinedButton("Back", () => Navigator.pop(context)),
                   _buildFilledButton("Create", () {
-                    // เมื่อกด Create ให้ไปหน้า Thank You
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => ThankYouPage()),
+                      MaterialPageRoute(builder: (context) => const ThankYouPage()),
                     );
                   }),
                 ],
@@ -180,73 +179,70 @@ class _CreateRestaurantPageState extends State<CreateRestaurantPage> {
         labelText: label,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Color(0xFF8B2323)),
+          borderSide: const BorderSide(color: Color(0xFF8B2323)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Color(0xFF8B2323)),
+          borderSide: const BorderSide(color: Color(0xFF8B2323)),
         ),
       ),
-    );
-  }
-
-  // ฟังก์ชันสร้างปุ่ม Back (Outlined Button)
-  Widget _buildOutlinedButton(String text, VoidCallback onPressed) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Color(0xFF8B2323),
-        side: BorderSide(color: Color(0xFF8B2323)),
-        padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      child: Text(text, style: TextStyle(fontSize: 16)),
     );
   }
 
   // ฟังก์ชันสร้างปุ่ม Create (Filled Button)
   Widget _buildFilledButton(String text, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Color(0xFF8B2323),
-        padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    return Expanded(
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF8B2323),
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 16)),
       ),
-      child: Text(text, style: TextStyle(color: Colors.white, fontSize: 16)),
     );
   }
 }
 
+
 class ThankYouPage extends StatelessWidget {
+  const ThankYouPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFF8B2323),
-        title: Align(
+        automaticallyImplyLeading: false,
+        backgroundColor: const Color(0xFF8B2323),
+        title: const Align(
           alignment: Alignment.centerLeft,
           child: Text(
             "Oura",
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22),
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22),
           ),
         ),
       ),
-      body: Center( // ✅ ทำให้ทุกอย่างอยู่ตรงกลาง
+      body: Center(
+        // ✅ ทำให้ทุกอย่างอยู่ตรงกลาง
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center, // ✅ จัดให้อยู่ตรงกลางแนวตั้ง
-            crossAxisAlignment: CrossAxisAlignment.center, // ✅ จัดให้อยู่ตรงกลางแนวนอน
+            mainAxisAlignment:
+                MainAxisAlignment.center, // ✅ จัดให้อยู่ตรงกลางแนวตั้ง
+            crossAxisAlignment:
+                CrossAxisAlignment.center, // ✅ จัดให้อยู่ตรงกลางแนวนอน
             children: [
-              Text(
+              const Text(
                 "Thank You !",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 20),
-              Image.asset('assets/images/oura-character.png', height: 150), // ✅ รูปภาพตรงกลาง
-              SizedBox(height: 20),
-              Text(
+              const SizedBox(height: 20),
+              Image.asset('assets/images/oura-character.png',
+                  height: 150), // ✅ รูปภาพตรงกลาง
+              const SizedBox(height: 20),
+              const Text(
                 "Thank you for choosing Oura!\n"
                 "Please wait while the admin verify.\n"
                 "Keep your notifications on, and we'll notify\n"
@@ -254,17 +250,21 @@ class ThankYouPage extends StatelessWidget {
                 textAlign: TextAlign.center, // ✅ จัดข้อความให้อยู่ตรงกลาง
                 style: TextStyle(fontSize: 16),
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(context); // ✅ กดแล้วกลับไปหน้าแรก
+                  Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const MainApp()),
+          );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF8B2323),
-                  padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  backgroundColor: const Color(0xFF8B2323),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
-                child: Text("Log out", style: TextStyle(color: Colors.white, fontSize: 16)),
+                child: const Text("Log out",
+                    style: TextStyle(color: Colors.white, fontSize: 16)),
               ),
             ],
           ),
@@ -273,4 +273,3 @@ class ThankYouPage extends StatelessWidget {
     );
   }
 }
-

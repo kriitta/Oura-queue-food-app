@@ -49,6 +49,7 @@ class _AdminPanelState extends State<AdminPanel> {
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
           textAlign: TextAlign.left, // ✅ ทำให้ชิดซ้าย
         ),
+        automaticallyImplyLeading: false,
       ),
       body: _pages[_selectedIndex], // แสดงหน้าที่เลือก
 

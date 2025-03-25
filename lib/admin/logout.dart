@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import '../system/main.dart';
 
 class LogoutPage extends StatelessWidget {
+  const LogoutPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -10,19 +13,19 @@ class LogoutPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(Icons.exit_to_app, size: 100, color: Colors.red[700]), // ✅ ไอคอน Logout
-          SizedBox(height: 20),
-          Text(
+          const SizedBox(height: 20),
+          const Text(
             "Are you sure you want to log out?",
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
             "If you log out, you will need to sign in again to access the admin panel.",
             style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 30),
+          const SizedBox(height: 30),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -32,22 +35,23 @@ class LogoutPage extends StatelessWidget {
                   Navigator.pop(context);
                 },
                 style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                  side: BorderSide(color: Color(0xFF8B2323)),
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                  side: const BorderSide(color: Color(0xFF8B2323)),
                 ),
-                child: Text("Cancel", style: TextStyle(color: Color(0xFF8B2323), fontSize: 16)),
+                child: const Text("Cancel", style: TextStyle(color: Color(0xFF8B2323), fontSize: 16)),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               ElevatedButton(
                 onPressed: () {
-                  // ✅ กลับไปหน้า Login หรือหน้าหลัก
-                  Navigator.popUntil(context, (route) => route.isFirst);
+                  Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const MainApp()),
+          );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF8B2323),
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                  backgroundColor: const Color(0xFF8B2323),
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                 ),
-                child: Text("Log out", style: TextStyle(color: Colors.white, fontSize: 16)),
+                child: const Text("Log out", style: TextStyle(color: Colors.white, fontSize: 16)),
               ),
             ],
           ),

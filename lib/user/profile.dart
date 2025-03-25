@@ -1,9 +1,89 @@
 import 'package:flutter/material.dart';
-import 'login.dart';
-import 'signup.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import '../system/main.dart';
 
-class ProfilePage extends StatelessWidget {
+// Import the EditProfilePage
+import 'edit_profile.dart';
+
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isLoading = true;
+  Map<String, dynamic>? _userData;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      User? currentUser = _auth.currentUser;
+      
+      if (currentUser != null) {
+        DocumentSnapshot userDoc = await _firestore
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+
+        if (userDoc.exists) {
+          setState(() {
+            _userData = userDoc.data() as Map<String, dynamic>?;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _navigateToEditProfile() async {
+    if (_userData == null) return;
+    
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProfilePage(userData: _userData!),
+      ),
+    );
+    
+    // If changes were made, reload user data
+    if (result == true) {
+      _loadUserData();
+    }
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await _auth.signOut();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const MainApp()),
+        (route) => false,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error signing out: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,89 +99,278 @@ class ProfilePage extends StatelessWidget {
           ),
         ),
         centerTitle: true,
+        automaticallyImplyLeading: false,
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Welcome!',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 5),
-              const Text(
-                'Let’s Get Started.',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 40),
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B2323)))
+        : _buildProfileContent(),
+    );
+  }
 
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginPage()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B2323),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+  Widget _buildProfileContent() {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 20),
+            // Profile Avatar
+            GestureDetector(
+              onTap: _navigateToEditProfile,
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  _userData?['profileImage'] != null && (_userData!['profileImage'] as String).isNotEmpty 
+                      ? CircleAvatar(
+                          radius: 60,
+                          backgroundColor: const Color(0xFFECDFDF),
+                          backgroundImage: MemoryImage(base64Decode(_userData!['profileImage'])),
+                          onBackgroundImageError: (_, __) {
+                            // ถ้าโหลดรูปไม่สำเร็จ จะแสดงตัวอักษรย่อแทน
+                          },
+                        )
+                      : CircleAvatar(
+                          radius: 60,
+                          backgroundColor: const Color(0xFFECDFDF),
+                          child: Text(
+                            _getUserInitials(),
+                            style: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF8B2323),
+                            ),
+                          ),
+                        ),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B2323),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.edit,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 80),
-                ),
-                child: const Text(
-                  'Sign In',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
+                ],
               ),
-              const SizedBox(height: 20),
-
-              const Text(
-                'Or',
-                style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 25),
+            
+            // User Name
+            Text(
+              _userData?['name'] ?? 'User',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 20),
-
-              OutlinedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SignUpPage()),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+            ),
+            const SizedBox(height: 5),
+            
+            // User Email
+            Text(
+              _userData?['email'] ?? '',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 40),
+            
+            // Profile Info Card
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
                   ),
-                  side: const BorderSide(color: Color(0xFF8B2323)),
-                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 80),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Personal Information',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildInfoRow(Icons.phone, 'Phone Number', _userData?['phone'] ?? 'Not provided'),
+                    const SizedBox(height: 15),
+                    _buildInfoRow(Icons.cake, 'Member Since', _formatDate(_userData?['createdAt'])),
+                  ],
                 ),
-                child: const Text(
-                  'Sign Up',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Color(0xFF8B2323),
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // Activity Card
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
                   ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Account Activity',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildStatsRow('Total Reservations', '0'),
+                    const SizedBox(height: 15),
+                    _buildStatsRow('Reward Points', '10'),
+                    const SizedBox(height: 15),
+                    _buildStatsRow('Favorite Restaurants', '0'),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
-
-              Text(
-                'Create your account for get 10 coins!',
-                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 40),
+            
+            // Edit Profile Button
+            OutlinedButton.icon(
+              onPressed: _navigateToEditProfile,
+              icon: const Icon(Icons.edit, color: Color(0xFF8B2323)),
+              label: const Text(
+                'Edit Profile',
+                style: TextStyle(color: Color(0xFF8B2323)),
               ),
-            ],
-          ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF8B2323)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 30),
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // Logout Button
+            ElevatedButton.icon(
+              onPressed: _signOut,
+              icon: const Icon(Icons.logout, color: Colors.white),
+              label: const Text(
+                'Logout',
+                style: TextStyle(fontSize: 16, color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B2323),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 30),
+              ),
+            ),
+            const SizedBox(height: 30),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFF8B2323), size: 20),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatsRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey[700],
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF8B2323),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getUserInitials() {
+    String name = _userData?['name'] ?? 'U';
+    if (name.isEmpty) return 'U';
+    
+    List<String> nameParts = name.split(' ');
+    if (nameParts.length > 1) {
+      return '${nameParts[0][0]}${nameParts[1][0]}';
+    } else {
+      return name[0];
+    }
+  }
+
+  String _formatDate(dynamic timestamp) {
+    if (timestamp == null) return 'Not available';
+    
+    try {
+      if (timestamp is Timestamp) {
+        DateTime dateTime = timestamp.toDate();
+        return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+      }
+      return 'Not available';
+    } catch (e) {
+      return 'Not available';
+    }
   }
 }

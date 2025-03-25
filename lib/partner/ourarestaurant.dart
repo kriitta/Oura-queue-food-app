@@ -1,7 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:project_final/partner/bottom_nav.dart';
-import '../firebase_options.dart';
+import 'package:project_final/system/main.dart';
+import '../system/firebase_options.dart';
 import 'edit_restaurant_screen.dart';
 import 'edit_promotion_screen.dart';
 import 'manage_reservation_screen.dart';
@@ -11,10 +12,12 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -23,18 +26,20 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.red,
       ),
-      home: HomeScreen(),
+      home: const HomeScreen(),
     );
   }
 }
 
 class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Oura',
           style: TextStyle(
             color: Colors.white,
@@ -48,10 +53,10 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            Align(
+            const Align(
               alignment: Alignment.centerLeft,
               child: Padding(
-                padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
+                padding: EdgeInsets.only(left: 8.0, bottom: 8.0),
                 child: Text(
                   'Queue',
                   style: TextStyle(
@@ -85,7 +90,7 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavBar(currentIndex: 0),
+      bottomNavigationBar: const BottomNavBar(currentIndex: 0),
     );
   }
 
@@ -101,7 +106,7 @@ class HomeScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
       ),
       elevation: 3,
-      margin: EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 16),
       color: Colors.white, // ตั้งค่าสีพื้นหลังของ Card ให้เป็นสีขาว
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -110,12 +115,12 @@ class HomeScreen extends StatelessWidget {
           children: [
             Text(
               title,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -123,7 +128,7 @@ class HomeScreen extends StatelessWidget {
                 queueInfo(title: 'Next Queue', queueNum: queueNext, seat: seatNext),
               ],
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -140,10 +145,10 @@ class HomeScreen extends StatelessWidget {
   Widget queueInfo({required String title, required String queueNum, required String seat}) {
     return Column(
       children: [
-        Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         Text(
           queueNum,
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         Text('Seat: $seat'),
       ],
@@ -156,19 +161,21 @@ class HomeScreen extends StatelessWidget {
         OutlinedButton(
           onPressed: () {},
           style: OutlinedButton.styleFrom(
-            shape: CircleBorder(),
-            padding: EdgeInsets.all(16),
+            shape: const CircleBorder(),
+            padding: const EdgeInsets.all(16),
           ),
           child: Icon(icon, color: Colors.black),
         ),
-        SizedBox(height: 5),
-        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 5),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
       ],
     );
   }
 }
 
 class ReservationScreen extends StatefulWidget {
+  const ReservationScreen({super.key});
+
   @override
   _ReservationScreenState createState() => _ReservationScreenState();
 }
@@ -202,7 +209,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Oura',
           style: TextStyle(
             color: Colors.white,
@@ -228,8 +235,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     fit: BoxFit.cover,
                   ),
                 ),
-                SizedBox(width: 10),
-                Column(
+                const SizedBox(width: 10),
+                const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -246,22 +253,22 @@ class _ReservationScreenState extends State<ReservationScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-            Text(
+            const Text(
               'Reservation',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             if (latestReservation != null) buildReservationCard(latestReservation!, 0),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
 
             if (upcomingReservations.isNotEmpty) ...[
-              Text(
+              const Text(
                 'Upcoming',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Expanded(
                 child: ListView.builder(
                   itemCount: upcomingReservations.length,
@@ -278,14 +285,14 @@ class _ReservationScreenState extends State<ReservationScreen> {
                   ElevatedButton(
                     onPressed: () {},
                     style: ElevatedButton.styleFrom(
-                      shape: CircleBorder(),
-                      padding: EdgeInsets.all(16),
-                      backgroundColor: Color(0xFF8B2323),
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(16),
+                      backgroundColor: const Color(0xFF8B2323),
                     ),
-                    child: Icon(Icons.play_arrow, color: Colors.white),
+                    child: const Icon(Icons.play_arrow, color: Colors.white),
                   ),
-                  SizedBox(height: 5),
-                  Text(
+                  const SizedBox(height: 5),
+                  const Text(
                     'Next',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                   ),
@@ -295,7 +302,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavBar(currentIndex: 1),
+      bottomNavigationBar: const BottomNavBar(currentIndex: 1),
     );
   }
 
@@ -305,7 +312,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
         borderRadius: BorderRadius.circular(15),
       ),
       elevation: 3,
-      margin: EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -317,7 +324,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                 children: [
                   Text(
                     res['id']!,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -338,8 +345,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     size: 30,
                   ),
                 ),
-                SizedBox(height: 5),
-                Text(
+                const SizedBox(height: 5),
+                const Text(
                   'Complete',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
@@ -353,11 +360,13 @@ class _ReservationScreenState extends State<ReservationScreen> {
 }
 
 class SettingScreen extends StatelessWidget {
+  const SettingScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Oura',
           style: TextStyle(
             color: Colors.white,
@@ -379,27 +388,27 @@ class SettingScreen extends StatelessWidget {
                 title: "Edit Restaurant Info",
                 page: EditRestaurantScreen(),
               ),
-              SizedBox(height: 15),
+              const SizedBox(height: 15),
               buildSettingCard(
                 context,
                 icon: Icons.local_offer,
                 title: "Edit Promotions",
                 page: EditPromotionScreen(),
               ),
-              SizedBox(height: 15),
+              const SizedBox(height: 15),
               buildSettingCard(
                 context,
                 icon: Icons.schedule,
                 title: "Manage Reservations",
                 page: ManageReservationScreen(),
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               buildLogoutButton(context),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavBar(currentIndex: 2),
+      bottomNavigationBar: const BottomNavBar(currentIndex: 2),
     );
   }
 
@@ -411,12 +420,12 @@ class SettingScreen extends StatelessWidget {
       ),
       elevation: 3,
       child: ListTile(
-        leading: Icon(icon, color: Color(0xFF8B2323)),
+        leading: Icon(icon, color: const Color(0xFF8B2323)),
         title: Text(
           title,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        trailing: Icon(Icons.arrow_forward_ios, color: Colors.black54),
+        trailing: const Icon(Icons.arrow_forward_ios, color: Colors.black54),
         onTap: () {
           Navigator.push(
             context,
@@ -430,19 +439,21 @@ class SettingScreen extends StatelessWidget {
   Widget buildLogoutButton(BuildContext context) {
     return ElevatedButton.icon(
       onPressed: () {
-        // Perform Logout Action
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const MainApp()),
+          );
       },
-      icon: Icon(Icons.logout, color: Colors.white),
-      label: Text(
+      icon: const Icon(Icons.logout, color: Colors.white),
+      label: const Text(
         "Log out",
         style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
       ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: Color(0xFF8B2323),
+        backgroundColor: const Color(0xFF8B2323),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        minimumSize: Size(double.infinity, 50),
+        minimumSize: const Size(double.infinity, 50),
       ),
     );
   }

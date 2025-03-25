@@ -45,7 +45,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Future<void> _registerUser() async {
     if (_formKey.currentState!.validate()) {
-      String role = isUser ? "users" : "partners"; 
       print("✅ Form validation passed, proceeding with Firebase registration...");
       
       try {

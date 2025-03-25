@@ -260,7 +260,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            if (latestReservation != null) buildReservationCard(latestReservation!, 0),
+            if (latestReservation != null) buildReservationCard(latestReservation, 0),
             const SizedBox(height: 20),
 
             if (upcomingReservations.isNotEmpty) ...[

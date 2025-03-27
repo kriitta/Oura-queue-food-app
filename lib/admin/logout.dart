@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../system/main.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 class LogoutPage extends StatelessWidget {
-  const LogoutPage({super.key});
+  LogoutPage({super.key});
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -42,11 +45,20 @@ class LogoutPage extends StatelessWidget {
               ),
               const SizedBox(width: 16),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const MainApp()),
-          );
-                },
+                onPressed: () 
+                  async {
+    try {
+      await _auth.signOut();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const MainApp()),
+        (route) => false,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error signing out: $e')),
+      );
+    }
+  },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF8B2323),
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
@@ -59,4 +71,6 @@ class LogoutPage extends StatelessWidget {
       ),
     );
   }
+
+  
 }

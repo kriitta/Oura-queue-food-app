@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
 
 class RestaurantDetailPage extends StatefulWidget {
   final String image;
@@ -8,6 +11,8 @@ class RestaurantDetailPage extends StatefulWidget {
   final int queue;
   final Color backgroundColor;
   final List<String> promotionImages;
+  final bool isFirestoreImage;
+  final String restaurantId; // เพิ่มฟิลด์ restaurantId
 
   const RestaurantDetailPage({
     super.key,
@@ -17,6 +22,8 @@ class RestaurantDetailPage extends StatefulWidget {
     required this.queue,
     required this.backgroundColor,
     required this.promotionImages,
+    this.isFirestoreImage = false,
+    required this.restaurantId, // เพิ่ม restaurantId เพื่อใช้อ้างอิงร้านอาหารใน Firestore
   });
 
   @override
@@ -25,193 +32,245 @@ class RestaurantDetailPage extends StatefulWidget {
 
 class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
   final _pageController = PageController();
+  bool _isLoading = false;
 
   void _showQueueNowDialog() {
-  showDialog(
-    context: context,
-    builder: (context) {
-      int numberOfPersons = 1;
-      String selectedTableType = '1-2 persons';
+    showDialog(
+      context: context,
+      builder: (context) {
+        int numberOfPersons = 1;
+        String selectedTableType = '1-2 persons';
 
-      void updateNumberOfPersons(String tableType) {
-        setState(() {
-          selectedTableType = tableType;
-          if (tableType == '1-2 persons') {
-            numberOfPersons = 1;
-          } else if (tableType == '3-6 persons') {
-            numberOfPersons = 3;
-          } else if (tableType == '7-12 persons') {
-            numberOfPersons = 7;
-          }
-        });
-      }
+        void updateNumberOfPersons(String tableType) {
+          setState(() {
+            selectedTableType = tableType;
+            if (tableType == '1-2 persons') {
+              numberOfPersons = 1;
+            } else if (tableType == '3-6 persons') {
+              numberOfPersons = 3;
+            } else if (tableType == '7-12 persons') {
+              numberOfPersons = 7;
+            }
+          });
+        }
 
-      return StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.8,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Queue Now',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.8,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Queue Now',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                const Text(
-                  'Type of tables:',
-                  style: TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _buildTableTypeButton(
-                      '1-2 persons',
-                      Icons.people,
-                      selectedTableType,
-                      (value) {
-                        setState(() {
-                          updateNumberOfPersons(value);
-                        });
-                      },
-                    ),
-                    _buildTableTypeButton(
-                      '3-6 persons',
-                      Icons.group,
-                      selectedTableType,
-                      (value) {
-                        setState(() {
-                          updateNumberOfPersons(value);
-                        });
-                      },
-                    ),
-                    _buildTableTypeButton(
-                      '7-12 persons',
-                      Icons.groups,
-                      selectedTableType,
-                      (value) {
-                        setState(() {
-                          updateNumberOfPersons(value);
-                        });
-                      },
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-
-                // Number of persons
-                const Text(
-                  'Number of persons:',
-                  style: TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle, color: Color(0xFF8B2323)),
-                      iconSize: 36,
-                      onPressed: () {
-                        setState(() {
-                          int minPersons = selectedTableType == '1-2 persons'
-                              ? 1
-                              : selectedTableType == '3-6 persons'
-                                  ? 3
-                                  : 7;
-                          if (numberOfPersons > minPersons) numberOfPersons--;
-                        });
-                      },
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.black54),
-                        borderRadius: BorderRadius.circular(10),
+                  const Text(
+                    'Type of tables:',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _buildTableTypeButton(
+                        '1-2 persons',
+                        Icons.people,
+                        selectedTableType,
+                        (value) {
+                          setState(() {
+                            updateNumberOfPersons(value);
+                          });
+                        },
                       ),
-                      child: Text(
-                        numberOfPersons.toString(),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                      _buildTableTypeButton(
+                        '3-6 persons',
+                        Icons.group,
+                        selectedTableType,
+                        (value) {
+                          setState(() {
+                            updateNumberOfPersons(value);
+                          });
+                        },
+                      ),
+                      _buildTableTypeButton(
+                        '7-12 persons',
+                        Icons.groups,
+                        selectedTableType,
+                        (value) {
+                          setState(() {
+                            updateNumberOfPersons(value);
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Number of persons
+                  const Text(
+                    'Number of persons:',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle, color: Color(0xFF8B2323)),
+                        iconSize: 36,
+                        onPressed: () {
+                          setState(() {
+                            int minPersons = selectedTableType == '1-2 persons'
+                                ? 1
+                                : selectedTableType == '3-6 persons'
+                                    ? 3
+                                    : 7;
+                            if (numberOfPersons > minPersons) numberOfPersons--;
+                          });
+                        },
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.black54),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          numberOfPersons.toString(),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle, color: Color(0xFF8B2323)),
-                      iconSize: 36,
-                      onPressed: () {
-                        setState(() {
-                          int maxPersons = selectedTableType == '1-2 persons'
-                              ? 2
-                              : selectedTableType == '3-6 persons'
-                                  ? 6
-                                  : 12;
-                          if (numberOfPersons < maxPersons) numberOfPersons++;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle, color: Color(0xFF8B2323)),
+                        iconSize: 36,
+                        onPressed: () {
+                          setState(() {
+                            int maxPersons = selectedTableType == '1-2 persons'
+                                ? 2
+                                : selectedTableType == '3-6 persons'
+                                    ? 6
+                                    : 12;
+                            if (numberOfPersons < maxPersons) numberOfPersons++;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                side: const BorderSide(
+                                    color: Color(0xFF8B2323), width: 1))),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF8B2323),
+                          ),
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8B2323),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              side: const BorderSide(
-                                  color: Color(0xFF8B2323), width: 1))),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF8B2323),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        onPressed: () {
+                          _addQueueNow(selectedTableType, numberOfPersons);
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text(
+                          'Confirm',
+                          style: TextStyle(fontSize: 16, color: Colors.white),
                         ),
                       ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF8B2323),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      onPressed: () {
-                        print('Table Type: $selectedTableType, Number of Persons: $numberOfPersons');
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text(
-                        'Confirm',
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
+  // เพิ่มฟังก์ชันสำหรับเพิ่มคิวใน Firestore
+  Future<void> _addQueueNow(String tableType, int numberOfPersons) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // ตรวจสอบว่าผู้ใช้ล็อกอินหรือยัง
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('กรุณาล็อกอินเพื่อจองคิว')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // สร้างข้อมูลคิวใหม่
+      Map<String, dynamic> queueData = {
+        'userId': currentUser.uid,
+        'restaurantId': widget.restaurantId,
+        'restaurantName': widget.name,
+        'tableType': tableType,
+        'numberOfPersons': numberOfPersons,
+        'timestamp': FieldValue.serverTimestamp(),
+        'status': 'waiting',
+      };
+
+      // เพิ่มคิวลงใน Firestore
+      await FirebaseFirestore.instance.collection('queues').add(queueData);
+
+      // เพิ่มจำนวนคิวในร้านอาหาร
+      await FirebaseFirestore.instance.collection('restaurants').doc(widget.restaurantId).update({
+        'queueCount': FieldValue.increment(1),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('จองคิวสำเร็จ!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   Widget _buildTableTypeButton(String type, IconData icon, String selectedType,
       Function(String) onSelect) {
@@ -241,7 +300,7 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     );
   }
 
-  void _showPromotionPopup(String imagePath) {
+  void _showPromotionPopup(String imagePath, bool isFirestoreImage) {
     showDialog(
       context: context,
       builder: (context) {
@@ -252,12 +311,16 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  imagePath,
-                  fit: BoxFit.contain,
-                ),
+                child: isFirestoreImage && imagePath.isNotEmpty
+                    ? Image.memory(
+                        base64Decode(imagePath),
+                        fit: BoxFit.contain,
+                      )
+                    : Image.asset(
+                        imagePath,
+                        fit: BoxFit.contain,
+                      ),
               ),
-
               Positioned(
                 top: 10,
                 right: 10,
@@ -420,8 +483,7 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                             ),
                           ),
                           onPressed: () {
-                            print(
-                                'Advance Booking: ${selectedTime.format(context)}, Persons: $persons');
+                            _addQueueInAdvance(selectedTime, persons);
                             Navigator.of(context).pop();
                           },
                           child: const Text(
@@ -439,6 +501,68 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
         );
       },
     );
+  }
+
+  // เพิ่มฟังก์ชันสำหรับจองคิวล่วงหน้า
+  Future<void> _addQueueInAdvance(TimeOfDay selectedTime, int persons) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // ตรวจสอบว่าผู้ใช้ล็อกอินหรือยัง
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('กรุณาล็อกอินเพื่อจองคิว')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // สร้างวันเวลาที่จอง
+      DateTime now = DateTime.now();
+      DateTime bookingTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+
+      // ถ้าเวลาที่เลือกเป็นเวลาในอดีต ให้เพิ่มไปอีก 1 วัน
+      if (bookingTime.isBefore(now)) {
+        bookingTime = bookingTime.add(const Duration(days: 1));
+      }
+
+      // สร้างข้อมูลการจองคิวล่วงหน้า
+      Map<String, dynamic> advanceBookingData = {
+        'userId': currentUser.uid,
+        'restaurantId': widget.restaurantId,
+        'restaurantName': widget.name,
+        'bookingTime': Timestamp.fromDate(bookingTime),
+        'numberOfPersons': persons,
+        'createdAt': FieldValue.serverTimestamp(),
+        'status': 'pending',
+      };
+
+      // เพิ่มการจองลงใน Firestore
+      await FirebaseFirestore.instance.collection('advanceBookings').add(advanceBookingData);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('จองคิวล่วงหน้าสำเร็จ!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -460,161 +584,301 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: widget.backgroundColor,
-                ),
-                child: Center(
-                  child: ClipOval(
-                    child: Image.asset(
-                      widget.image,
-                      fit: BoxFit.cover,
-                      width: 150,
-                      height: 150,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              Text(
-                widget.name,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    widget.location,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 5),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.people, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Queue : ${widget.queue}',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 30),
-
-              const Text(
-                'Choose the type of reservation',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildReservationOption(
-                    icon: Icons.groups,
-                    title: 'Queue Now',
-                    onTap: _showQueueNowDialog,
-                  ),
-                  _buildReservationOption(
-                    icon: Icons.calendar_today,
-                    title: 'Queue\nin advance',
-                    onTap: _showQueueInAdvanceDialog,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 30),
-
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Promotion',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: 200,
-                child: Stack(
-                  alignment: Alignment.center,
+      body: _isLoading 
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B2323)))
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    PageView.builder(
-                      controller: _pageController,
-                      itemCount: widget.promotionImages.length,
-                      itemBuilder: (context, index) {
-                        return GestureDetector(
-                          onTap: () {
-                            _showPromotionPopup(widget.promotionImages[index]);
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(15),
-                              image: DecorationImage(
-                                image:
-                                    AssetImage(widget.promotionImages[index]),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
+                    _buildRestaurantImage(),
+                    const SizedBox(height: 20),
+
+                    Text(
+                      widget.name,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          widget.location,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
                           ),
-                        );
-                      },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.people, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Queue : ${widget.queue}',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    const Text(
+                      'Choose the type of reservation',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildReservationOption(
+                          icon: Icons.groups,
+                          title: 'Queue Now',
+                          onTap: _showQueueNowDialog,
+                        ),
+                        _buildReservationOption(
+                          icon: Icons.calendar_today,
+                          title: 'Queue\nin advance',
+                          onTap: _showQueueInAdvanceDialog,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
+
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Promotion',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildPromotionCarousel(),
+                    const SizedBox(height: 20),
+
+                    SmoothPageIndicator(
+                      controller: _pageController,
+                      count: widget.promotionImages.length,
+                      effect: const ExpandingDotsEffect(
+                        dotHeight: 8,
+                        dotWidth: 8,
+                        activeDotColor: Color(0xFF8B2323),
+                        dotColor: Colors.grey,
+                      ),
                     ),
                   ],
                 ),
               ),
+            ),
+    );
+  }
 
-              const SizedBox(height: 20),
-
-              SmoothPageIndicator(
-                controller: _pageController,
-                count: widget.promotionImages.length,
-                effect: const ExpandingDotsEffect(
-                  dotHeight: 8,
-                  dotWidth: 8,
-                  activeDotColor: Color(0xFF8B2323),
-                  dotColor: Colors.grey,
-                ),
+  // เพิ่มเมธอดสำหรับแสดงรูปภาพร้านอาหาร (รองรับทั้ง asset และ base64)
+  Widget _buildRestaurantImage() {
+    if (widget.isFirestoreImage && widget.image.isNotEmpty) {
+      try {
+        return Container(
+          width: 150,
+          height: 150,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: widget.backgroundColor,
+          ),
+          child: Center(
+            child: ClipOval(
+              child: Image.memory(
+                base64Decode(widget.image),
+                fit: BoxFit.cover,
+                width: 150,
+                height: 150,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 150,
+                    height: 150,
+                    color: widget.backgroundColor,
+                    child: Center(
+                      child: Text(
+                        widget.name.isNotEmpty ? widget.name.substring(0, 1).toUpperCase() : "?",
+                        style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  );
+                },
               ),
-            ],
+            ),
+          ),
+        );
+      } catch (e) {
+        return Container(
+          width: 150,
+          height: 150,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: widget.backgroundColor,
+          ),
+          child: Center(
+            child: Text(
+              widget.name.isNotEmpty ? widget.name.substring(0, 1).toUpperCase() : "?",
+              style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.bold),
+            ),
+          ),
+        );
+      }
+    } else {
+      return Container(
+        width: 150,
+        height: 150,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: widget.backgroundColor,
+        ),
+        child: Center(
+          child: ClipOval(
+            child: Image.asset(
+              widget.image,
+              fit: BoxFit.cover,
+              width: 150,
+              height: 150,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: 150,
+                  height: 150,
+                  color: widget.backgroundColor,
+                  child: Center(
+                    child: Text(
+                      widget.name.isNotEmpty ? widget.name.substring(0, 1).toUpperCase() : "?",
+                      style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
+      );
+    }
+  }
+
+  // เพิ่มเมธอดสำหรับแสดงรูปภาพโปรโมชั่น (รองรับทั้ง asset และ base64)
+  Widget _buildPromotionCarousel() {
+    if (widget.promotionImages.isEmpty) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: const Center(
+          child: Text(
+            "No Promotions",
+            style: TextStyle(color: Colors.grey, fontSize: 18),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 200,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.promotionImages.length,
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () {
+                  _showPromotionPopup(widget.promotionImages[index], widget.isFirestoreImage);
+                },
+                child: _buildPromotionImage(widget.promotionImages[index]),
+              );
+            },
+          ),
+        ],
       ),
     );
+  }
+
+  // แยกเมธอดสำหรับสร้างรูปภาพโปรโมชั่น
+  Widget _buildPromotionImage(String imagePath) {
+    if (widget.isFirestoreImage && imagePath.isNotEmpty) {
+      try {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Image.memory(
+              base64Decode(imagePath),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Image not available',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      } catch (e) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: const Center(
+            child: Text(
+              'Image not available',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+        );
+      }
+    } else {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          image: DecorationImage(
+            image: AssetImage(imagePath),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildReservationOption({

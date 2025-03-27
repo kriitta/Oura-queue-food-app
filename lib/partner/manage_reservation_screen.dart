@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class ManageReservationScreen extends StatefulWidget {
+  final Map<String, dynamic>? restaurantData;
+  
+  const ManageReservationScreen({Key? key, this.restaurantData}) : super(key: key);
+
   @override
   _ManageReservationScreenState createState() => _ManageReservationScreenState();
 }

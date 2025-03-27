@@ -5,6 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'login.dart';
 import 'signup.dart';
 import '../system/firebase_options.dart';
+import '../user/main.dart';
+import '../partner/create_restaurant.dart';
+import '../admin/verify.dart'; // เพิ่มการ import หน้า admin (สร้างหน้านี้ตามต้องการ)
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,25 +38,102 @@ class MainApp extends StatelessWidget {
         ),
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          // If user is already logged in, redirect to home page
-          if (snapshot.hasData) {
-            // TODO: Navigate to the appropriate home page based on user role
-            // For now, we'll just show the welcome page
-            return const WelcomePage();
-          }
-          // Otherwise, show welcome page
-          return const WelcomePage();
-        },
-      ),
+      home: AuthCheckPage(),
+    );
+  }
+}
+
+class AuthCheckPage extends StatelessWidget {
+  AuthCheckPage({Key? key}) : super(key: key);
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<Widget> _getStartupScreen() async {
+    User? currentUser = _auth.currentUser;
+    
+    if (currentUser == null) {
+      // ถ้ายังไม่ได้ล็อกอิน ส่งไปหน้า WelcomePage
+      return const WelcomePage();
+    }
+    
+    try {
+      // ตรวจสอบว่าเป็น admin หรือไม่
+      DocumentSnapshot adminDoc = await _firestore
+          .collection('admins')
+          .doc(currentUser.uid)
+          .get();
+      
+      if (adminDoc.exists) {
+        return const AdminPanel();
+      }
+      
+      // ตรวจสอบว่าเป็น partner หรือไม่
+      DocumentSnapshot partnerDoc = await _firestore
+          .collection('partners')
+          .doc(currentUser.uid)
+          .get();
+      
+      if (partnerDoc.exists) {
+        Map<String, dynamic> partnerData = partnerDoc.data() as Map<String, dynamic>;
+        
+        // ตรวจสอบว่า partner ได้สร้างร้านอาหารไปแล้วหรือไม่
+        if (partnerData.containsKey('hasSubmittedRestaurant') && 
+            partnerData['hasSubmittedRestaurant'] == true) {
+          // กรณีที่สร้างร้านอาหารไปแล้ว ส่งไปหน้า ThankYouPage
+          return const ThankYouPage();
+        } else {
+          // กรณีที่ยังไม่ได้สร้างร้านอาหาร ส่งไปหน้าสร้างร้านอาหาร
+          return const CreateRestaurantPage();
+        }
+      }
+      
+      // ตรวจสอบว่าเป็น user หรือไม่
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+      
+      if (userDoc.exists) {
+        return const QuraApp();
+      }
+    } catch (e) {
+      print('Error checking user type: $e');
+    }
+    
+    // กรณีเกิดข้อผิดพลาดหรือไม่พบข้อมูลผู้ใช้ ให้ส่งไปหน้า WelcomePage
+    return const WelcomePage();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Widget>(
+      future: _getStartupScreen(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8B2323)),
+              ),
+            ),
+          );
+        } else if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Text('Error: ${snapshot.error}'),
+            ),
+          );
+        } else {
+          return snapshot.data ?? const WelcomePage();
+        }
+      },
     );
   }
 }
 
 class WelcomePage extends StatelessWidget {
-  const WelcomePage({Key? key}) : super(key: key);
+  const WelcomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +219,7 @@ class WelcomePage extends StatelessWidget {
 // This class can be your home page for users after successful login
 class HomePage extends StatefulWidget {
   final String userRole;
-  const HomePage({Key? key, required this.userRole}) : super(key: key);
+  const HomePage({super.key, required this.userRole});
 
   @override
   State<HomePage> createState() => _HomePageState();

@@ -83,17 +83,17 @@ class _AdminPanelState extends State<AdminPanel> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFF8B2323),
-        title: Text("Oura", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: const Color(0xFF8B2323),
+        title: const Text("Oura", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
       ),
       body: _pages[_selectedIndex],
 
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        selectedItemColor: Color(0xFF8B2323),
+        selectedItemColor: const Color(0xFF8B2323),
         unselectedItemColor: Colors.grey,
-        items: [
+        items: const [
           BottomNavigationBarItem(icon: Icon(Icons.hourglass_empty), label: "Awaiting"),
           BottomNavigationBarItem(icon: Icon(Icons.verified), label: "Verified"),
           BottomNavigationBarItem(icon: Icon(Icons.logout), label: "Logout"),
@@ -118,8 +118,8 @@ class AwaitingVerificationPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Awaiting Verification", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          SizedBox(height: 16),
+          const Text("Awaiting Verification", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
           Expanded(
             child: ListView.builder(
               itemCount: restaurantRequests.length,
@@ -164,8 +164,8 @@ class RestaurantCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: Color(0xFF8B2323))),
-      margin: EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Color(0xFF8B2323))),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Row(
@@ -174,17 +174,17 @@ class RestaurantCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(image, width: 60, height: 60, fit: BoxFit.cover),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 4),
+                  Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(location, style: TextStyle(color: Colors.grey[700])),
                     ],
                   ),
@@ -212,7 +212,7 @@ class RestaurantDetailPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -222,20 +222,20 @@ class RestaurantDetailPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             CircleAvatar(radius: 50, backgroundImage: AssetImage(restaurant["image"])),
-            SizedBox(height: 12),
-            Text(restaurant["name"], style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
+            const SizedBox(height: 12),
+            Text(restaurant["name"], style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                SizedBox(width: 4),
+                const SizedBox(width: 4),
                 Text(restaurant["location"], style: TextStyle(color: Colors.grey[700])),
               ],
             ),
-            Divider(height: 30),
-            Text("Promotion", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
+            const Divider(height: 30),
+            const Text("Promotion", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
@@ -248,9 +248,9 @@ class RestaurantDetailPage extends StatelessWidget {
                 },
               ),
             ),
-            Divider(height: 30),
-            Text("Verify ?", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 12),
+            const Divider(height: 30),
+            const Text("Verify ?", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -259,16 +259,16 @@ class RestaurantDetailPage extends StatelessWidget {
                     onDeny(index);
                     Navigator.pop(context);
                   },
-                  child: Text("Deny", style: TextStyle(color: Color(0xFF8B2323))),
+                  child: const Text("Deny", style: TextStyle(color: Color(0xFF8B2323))),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 ElevatedButton(
                   onPressed: () {
                     onApprove(index);
                     Navigator.pop(context);
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF8B2323)),
-                  child: Text("Approved", style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B2323)),
+                  child: const Text("Approved", style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
@@ -291,11 +291,11 @@ class VerifiedPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Verified Restaurants", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          SizedBox(height: 16),
+          const Text("Verified Restaurants", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
           Expanded(
             child: verifiedRestaurants.isEmpty
-                ? Center(
+                ? const Center(
                     child: Text("No Verified Restaurants Yet", style: TextStyle(fontSize: 18, color: Colors.grey)),
                   )
                 : ListView.builder(
@@ -341,12 +341,12 @@ class VerifiedRestaurantDetailPage extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Contact Information"),
+          title: const Text("Contact Information"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text("📞 Phone: ${restaurant["phone"] ?? "N/A"}"),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text("📧 Email: ${restaurant["email"] ?? "N/A"}"),
             ],
           ),
@@ -355,7 +355,7 @@ class VerifiedRestaurantDetailPage extends StatelessWidget {
               onPressed: () {
                 Navigator.pop(context);
               },
-              child: Text("Close"),
+              child: const Text("Close"),
             ),
           ],
         );
@@ -368,7 +368,7 @@ class VerifiedRestaurantDetailPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -378,20 +378,20 @@ class VerifiedRestaurantDetailPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             CircleAvatar(radius: 50, backgroundImage: AssetImage(restaurant["image"])),
-            SizedBox(height: 12),
-            Text(restaurant["name"], style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
+            const SizedBox(height: 12),
+            Text(restaurant["name"], style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                SizedBox(width: 4),
+                const SizedBox(width: 4),
                 Text(restaurant["location"], style: TextStyle(color: Colors.grey[700])),
               ],
             ),
-            Divider(height: 30),
-            Text("Promotion", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
+            const Divider(height: 30),
+            const Text("Promotion", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
@@ -404,9 +404,9 @@ class VerifiedRestaurantDetailPage extends StatelessWidget {
                 },
               ),
             ),
-            Divider(height: 30),
-            Text("Something went wrong?", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 12),
+            const Divider(height: 30),
+            const Text("Something went wrong?", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -414,15 +414,15 @@ class VerifiedRestaurantDetailPage extends StatelessWidget {
                   onPressed: () {
                     Navigator.pop(context); // ลบแล้วกลับไปหน้า Verified
                   },
-                  child: Text("Delete", style: TextStyle(color: Color(0xFF8B2323))),
+                  child: const Text("Delete", style: TextStyle(color: Color(0xFF8B2323))),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 ElevatedButton(
                   onPressed: () {
                     _showContactModal(context); // แสดง Contact Modal
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF8B2323)),
-                  child: Text("Contact", style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B2323)),
+                  child: const Text("Contact", style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
@@ -442,19 +442,19 @@ class LogoutPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(Icons.exit_to_app, size: 100, color: Colors.red[700]), // ✅ ไอคอน Logout
-          SizedBox(height: 20),
-          Text(
+          const SizedBox(height: 20),
+          const Text(
             "Are you sure you want to log out?",
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
             "If you log out, you will need to sign in again to access the admin panel.",
             style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 30),
+          const SizedBox(height: 30),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -464,22 +464,22 @@ class LogoutPage extends StatelessWidget {
                   Navigator.pop(context);
                 },
                 style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                  side: BorderSide(color: Color(0xFF8B2323)),
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                  side: const BorderSide(color: Color(0xFF8B2323)),
                 ),
-                child: Text("Cancel", style: TextStyle(color: Color(0xFF8B2323), fontSize: 16)),
+                child: const Text("Cancel", style: TextStyle(color: Color(0xFF8B2323), fontSize: 16)),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               ElevatedButton(
                 onPressed: () {
                   // ✅ กลับไปหน้า Login หรือหน้าหลัก
                   Navigator.popUntil(context, (route) => route.isFirst);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF8B2323),
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                  backgroundColor: const Color(0xFF8B2323),
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                 ),
-                child: Text("Log out", style: TextStyle(color: Colors.white, fontSize: 16)),
+                child: const Text("Log out", style: TextStyle(color: Colors.white, fontSize: 16)),
               ),
             ],
           ),

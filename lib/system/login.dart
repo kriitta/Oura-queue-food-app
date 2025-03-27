@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:project_final/admin/verify.dart';
 import '../user/main.dart';
 import '../partner/create_restaurant.dart';
-import '../admin/verify.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -31,80 +31,85 @@ class _LoginPageState extends State<LoginPage> {
           password: _passwordController.text.trim(),
         );
 
-        // First, try to find the user in 'admin' collection
+        // ตรวจสอบว่าเป็น admin หรือไม่
         DocumentSnapshot adminDoc = await FirebaseFirestore.instance
             .collection('admins')
             .doc(userCredential.user!.uid)
             .get();
             
         if (adminDoc.exists) {
-          // ถ้าพบว่าเป็น admin
+          // ถ้าเป็น admin ให้นำทางไปยังหน้า admin
           final adminData = adminDoc.data() as Map<String, dynamic>;
           final String adminName = adminData['name'] ?? 'Admin';
           
-          // แสดงข้อความต้อนรับสำหรับ admin
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Admin Login Successful! Welcome, $adminName')),
           );
           
-          // นำทางไปหน้า Admin Dashboard
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => AdminPanel()),
-          );
-          
-        
-          
-          setState(() {
-            _isLoading = false;
-          });
+              MaterialPageRoute(builder: (context) => AdminPanel()),
+            );
           return;
         }
 
-        // ถ้าไม่ใช่ admin ให้ตรวจสอบว่าเป็น user หรือไม่
+        // ตรวจสอบว่าเป็น partner หรือไม่
+        DocumentSnapshot partnerDoc = await FirebaseFirestore.instance
+            .collection('partners')
+            .doc(userCredential.user!.uid)
+            .get();
+        
+        if (partnerDoc.exists) {
+          // ถ้าเป็น partner
+          final partnerData = partnerDoc.data() as Map<String, dynamic>;
+          final String partnerName = partnerData['ownerName'] ?? 'Partner';
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Partner Login Successful! Welcome, $partnerName')),
+          );
+          
+          // ตรวจสอบว่า partner ได้สร้างร้านอาหารไปแล้วหรือไม่
+          if (partnerData.containsKey('hasSubmittedRestaurant') && 
+              partnerData['hasSubmittedRestaurant'] == true) {
+            // กรณีที่สร้างร้านอาหารไปแล้ว นำทางไปยังหน้า ThankYouPage
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const ThankYouPage()),
+            );
+          } else {
+            // กรณีที่ยังไม่ได้สร้างร้านอาหาร นำทางไปยังหน้าสร้างร้านอาหาร
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const CreateRestaurantPage()),
+            );
+          }
+          return;
+        }
+
+        // ตรวจสอบว่าเป็น user หรือไม่
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(userCredential.user!.uid)
             .get();
-
-        // If not found in 'users', check 'partners' collection
-        if (!userDoc.exists) {
-          userDoc = await FirebaseFirestore.instance
-              .collection('partners')
-              .doc(userCredential.user!.uid)
-              .get();
-        }
-
+        
         if (userDoc.exists) {
-          // Determine user role from the document
+          // ถ้าเป็น user ทั่วไป
           final userData = userDoc.data() as Map<String, dynamic>;
-          final String role = userData['role'] ?? 'User';
-          final String name = userData['name'] ?? userData['ownerName'] ?? 'User';
+          final String name = userData['name'] ?? 'User';
 
-          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Login Successful! Welcome, $name')),
           );
 
-          // Navigate to appropriate page based on role
-          if (role == 'User') {
-            // Navigate to User Home Page
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const QuraApp()),
-              );
-            print('Navigating to User Home Page with data: $userData');
-          } else if (role == 'Partner') {
-            // Navigate to Partner Home Page
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => CreateRestaurantPage()),
-            );
-            print('Navigating to Partner Home Page with data: $userData');
-          }
-        } else {
-          // This shouldn't normally happen - the user exists in Auth but not in Firestore
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User profile not found. Please contact support.')),
+          // นำทางไปยังหน้าหลักของ user
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const QuraApp()),
           );
+          return;
         }
+
+        // กรณีไม่พบข้อมูลผู้ใช้ใน Firestore เลย
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User profile not found. Please contact support.')),
+        );
+
       } on FirebaseAuthException catch (e) {
         // Handle specific Firebase Authentication errors
         String errorMessage = 'Login failed';
@@ -256,8 +261,6 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               
-            
-              
               const SizedBox(height: 60),
               
               // Login Button
@@ -293,7 +296,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    // Clean up controllers when the widget is disposed
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();

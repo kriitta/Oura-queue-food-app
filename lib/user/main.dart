@@ -5,6 +5,8 @@ import 'reward.dart';
 import 'profile.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../system/firebase_options.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -122,90 +124,81 @@ class RestaurantListView extends StatefulWidget {
 class _RestaurantListViewState extends State<RestaurantListView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  List<Map<String, dynamic>> _restaurants = [];
+  bool _isLoading = true;
 
-  final List<Map<String, dynamic>> _restaurants = [
-    {
-      'image': 'assets/images/famtime.jpeg',
-      'name': 'Fam Time',
-      'location': 'Siam Square Soi 4',
-      'queue': 21,
-      'backgroundColor': const Color(0xFF8B2323),
-      'promotionImages': [
-        'assets/images/promo-fam.jpg',
-        'assets/images/promo-fam2.jpg',
-        'assets/images/promo-fam3.jpg',
-      ],
-      'isAvailable': true,
-    },
-    {
-      'image': 'assets/images/cheevitcheeva.jpeg',
-      'name': 'Cheevit Cheeva',
-      'location': 'Emspheare Fl. 3',
-      'queue': 11,
-      'backgroundColor': Colors.green[400]!,
-      'promotionImages': [
-        'assets/images/promo-cheevit1.jpg',
-        'assets/images/promo-cheevit2.jpg',
-        'assets/images/promo-cheevit3.jpg',
-      ],
-      'isAvailable': true,
-    },
-    {
-      'image': 'assets/images/chatrateen.jpeg',
-      'name': 'Cha Tra Teen',
-      'location': 'Kasetsart University',
-      'queue': 999,
-      'backgroundColor': Colors.red[800]!,
-      'promotionImages': [
-        'assets/images/promo-cha1.jpg',
-        'assets/images/promo-cha2.jpg',
-        'assets/images/promo-cha3.jpg',
-      ],
-      'isAvailable': true,
-    },
-    {
-      'image': 'assets/images/ohkraju.jpeg',
-      'name': 'Oh Kra Ju',
-      'location': 'Central World Fl. 2',
-      'queue': 7,
-      'backgroundColor': Colors.green,
-      'promotionImages': [
-        'assets/images/promo-oh1.jpg',
-        'assets/images/promo-oh2.jpg',
-        'assets/images/promo-oh3.jpg',
-      ],
-      'isAvailable': true,
-    },
-    {
-      'image': 'assets/images/ohkraju.jpeg',
-      'name': 'Oh Kra Ju',
-      'location': 'Central Lardpao Fl. 1',
-      'queue': 0,
-      'backgroundColor': Colors.green,
-      'promotionImages': [
-        'assets/images/promo-oh1.jpg',
-        'assets/images/promo-oh2.jpg',
-        'assets/images/promo-oh3.jpg',
-      ],
-      'isAvailable': false,
-    },
-    {
-      'image': 'assets/images/sizzler.jpeg',
-      'name': 'Sizzler',
-      'location': 'Central World Fl. 7',
-      'queue': 0,
-      'backgroundColor': Colors.green,
-      'promotionImages': [
-        'assets/images/promo-siz1.jpg',
-        'assets/images/promo-siz2.jpg',
-        'assets/images/promo-siz3.jpg',
-      ],
-      'isAvailable': false,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadRestaurants();
+  }
+
+  Future<void> _loadRestaurants() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // ดึงข้อมูลร้านอาหารที่ได้รับการ verify แล้ว
+      final QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('restaurants')
+          .where('isVerified', isEqualTo: true)
+          .get();
+
+      // แปลงข้อมูลจาก Firestore เป็นรูปแบบที่เราต้องการใช้
+      final List<Map<String, dynamic>> loadedRestaurants = [];
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // สร้าง Color จาก RGB หรือใช้สีเริ่มต้น
+        Color backgroundColor = const Color(0xFF8B2323); // สีเริ่มต้น
+        
+        // ตรวจสอบว่าร้านเปิดให้บริการหรือไม่
+        bool isAvailable = data['isAvailable'] ?? true;
+        
+        // ตรวจสอบว่ามีรูปภาพโปรโมชันหรือไม่
+        List<String> promotionImages = [];
+        if (data.containsKey('promotionImage') && data['promotionImage'] != null) {
+          // ถ้ามีภาพโปรโมชัน ใส่ไว้ในลิสต์
+          promotionImages.add(data['promotionImage']);
+        }
+        
+        // สร้างข้อมูลร้านอาหาร
+        Map<String, dynamic> restaurant = {
+          'id': doc.id,
+          'image': data['restaurantImage'], // ภาพที่เก็บเป็น base64
+          'name': data['name'] ?? 'Unnamed Restaurant',
+          'location': data['location'] ?? 'No location',
+          'queue': data['queueCount'] ?? 0,
+          'backgroundColor': backgroundColor,
+          'promotionImages': promotionImages,
+          'isAvailable': isAvailable,
+        };
+        
+        loadedRestaurants.add(restaurant);
+      }
+      
+      setState(() {
+        _restaurants = loadedRestaurants;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading restaurants: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // โชว์ข้อความแจ้งเตือนหากมีปัญหา
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เกิดข้อผิดพลาดในการโหลดข้อมูล: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // กรองร้านอาหารตามคำค้นหา
     List<Map<String, dynamic>> filteredRestaurants = _restaurants
         .where((restaurant) =>
             restaurant['name'].toLowerCase().contains(_searchQuery.toLowerCase()))
@@ -213,7 +206,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
 
     return Column(
       children: [
-        
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: TextField(
@@ -243,58 +235,84 @@ class _RestaurantListViewState extends State<RestaurantListView> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(30),
                 borderSide: const BorderSide(color: Color(0xFF8B2323)),
-                
               ),
             ),
             style: const TextStyle(color: Color(0xFF8B2323)),
           ),
         ),
 
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Available Section
-                if (filteredRestaurants.any((r) => r['isAvailable']))
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: StatusChip(text: 'Available', isAvailable: true),
-                  ),
-                ...filteredRestaurants
-                    .where((r) => r['isAvailable'])
-                    .map((restaurant) => RestaurantCard(
-                          image: restaurant['image'],
-                          name: restaurant['name'],
-                          location: restaurant['location'],
-                          queue: restaurant['queue'],
-                          backgroundColor: restaurant['backgroundColor'],
-                          promotionImages: List<String>.from(restaurant['promotionImages']),
-                        ))
-                    .toList(),
+        // โชว์ตัวโหลดข้อมูลหากกำลังโหลด
+        if (_isLoading)
+          const Expanded(
+            child: Center(
+              child: CircularProgressIndicator(color: Color(0xFF8B2323)),
+            ),
+          )
+        // โชว์ข้อความถ้าไม่มีร้านอาหาร
+        else if (_restaurants.isEmpty)
+          const Expanded(
+            child: Center(
+              child: Text(
+                'ไม่พบร้านอาหาร',
+                style: TextStyle(fontSize: 18, color: Colors.grey),
+              ),
+            ),
+          )
+        // แสดงรายการร้านอาหาร
+        else
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadRestaurants, // ให้ดึงข้อมูลใหม่เมื่อ pull-to-refresh
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Available Section
+                    if (filteredRestaurants.any((r) => r['isAvailable']))
+                      const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: StatusChip(text: 'Available', isAvailable: true),
+                      ),
+                    ...filteredRestaurants
+                        .where((r) => r['isAvailable'])
+                        .map((restaurant) => RestaurantCard(
+                              image: restaurant['image'],
+                              name: restaurant['name'],
+                              location: restaurant['location'],
+                              queue: restaurant['queue'],
+                              backgroundColor: restaurant['backgroundColor'],
+                              promotionImages: List<String>.from(restaurant['promotionImages']),
+                              isFirestoreImage: true,
+                              restaurantId: restaurant['id'],
+                            ))
+                        .toList(),
 
-                // Unavailable Section
-                if (filteredRestaurants.any((r) => !r['isAvailable']))
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: StatusChip(text: 'Unavailable', isAvailable: false),
-                  ),
-                ...filteredRestaurants
-                    .where((r) => !r['isAvailable'])
-                    .map((restaurant) => RestaurantCard(
-                          image: restaurant['image'],
-                          name: restaurant['name'],
-                          location: restaurant['location'],
-                          queue: restaurant['queue'],
-                          backgroundColor: restaurant['backgroundColor'],
-                          promotionImages: List<String>.from(restaurant['promotionImages']),
-                          isAvailable: false,
-                        ))
-                    .toList(),
-              ],
+                    // Unavailable Section
+                    if (filteredRestaurants.any((r) => !r['isAvailable']))
+                      const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: StatusChip(text: 'Unavailable', isAvailable: false),
+                      ),
+                    ...filteredRestaurants
+                        .where((r) => !r['isAvailable'])
+                        .map((restaurant) => RestaurantCard(
+                              image: restaurant['image'],
+                              name: restaurant['name'],
+                              location: restaurant['location'],
+                              queue: restaurant['queue'],
+                              backgroundColor: restaurant['backgroundColor'],
+                              promotionImages: List<String>.from(restaurant['promotionImages']),
+                              isAvailable: false,
+                              isFirestoreImage: true,
+                              restaurantId: restaurant['id'],
+                            ))
+                        .toList(),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -341,6 +359,8 @@ class RestaurantCard extends StatelessWidget {
   final Color backgroundColor;
   final bool isAvailable;
   final List<String> promotionImages;
+  final bool isFirestoreImage;
+  final String restaurantId;
 
   const RestaurantCard({
     super.key,
@@ -351,26 +371,30 @@ class RestaurantCard extends StatelessWidget {
     this.backgroundColor = const Color(0xFF8B2323),
     this.isAvailable = true,
     required this.promotionImages,
+    this.isFirestoreImage = false,
+    required this.restaurantId,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        if(isAvailable){
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RestaurantDetailPage(
-              image: image,
-              name: name,
-              location: location,
-              queue: queue,
-              backgroundColor: backgroundColor,
-              promotionImages: promotionImages,
+        if (isAvailable) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RestaurantDetailPage(
+                image: image,
+                name: name,
+                location: location,
+                queue: queue,
+                backgroundColor: backgroundColor,
+                promotionImages: promotionImages,
+                isFirestoreImage: isFirestoreImage,
+                restaurantId: restaurantId,
+              ),
             ),
-          ),
-        );
+          );
         }
       },
       child: Container(
@@ -378,37 +402,16 @@ class RestaurantCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isAvailable ? Colors.white : Colors.grey[300],
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isAvailable ? const Color(0xFF8B2323) : Colors.grey,width: 2),
+          border: Border.all(color: isAvailable ? const Color(0xFF8B2323) : Colors.grey, width: 2),
         ),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Row(
             children: [
+              // Restaurant Image
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  image,
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 80,
-                      height: 80,
-                      color: backgroundColor,
-                      child: Center(
-                        child: Text(
-                          name.substring(0, 1),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                child: _buildRestaurantImage(),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -432,10 +435,14 @@ class RestaurantCard extends StatelessWidget {
                           color: isAvailable ? Colors.grey : Colors.grey[600],
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          location,
-                          style: TextStyle(
-                            color: isAvailable ? Colors.grey : Colors.grey[600],
+                        Expanded(
+                          child: Text(
+                            location,
+                            style: TextStyle(
+                              color: isAvailable ? Colors.grey : Colors.grey[600],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -461,6 +468,54 @@ class RestaurantCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRestaurantImage() {
+    if (isFirestoreImage && image != null && image.isNotEmpty) {
+      try {
+        // ถ้าเป็นรูปจาก Firestore (base64)
+        return Image.memory(
+          base64Decode(image),
+          width: 80,
+          height: 80,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildFallbackImage();
+          },
+        );
+      } catch (e) {
+        return _buildFallbackImage();
+      }
+    } else {
+      // ถ้าเป็นรูปจาก assets
+      return Image.asset(
+        image,
+        width: 80,
+        height: 80,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildFallbackImage();
+        },
+      );
+    }
+  }
+
+  Widget _buildFallbackImage() {
+    return Container(
+      width: 80,
+      height: 80,
+      color: backgroundColor,
+      child: Center(
+        child: Text(
+          name.isNotEmpty ? name.substring(0, 1) : "?",
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),

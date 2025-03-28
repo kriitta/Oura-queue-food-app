@@ -6,6 +6,7 @@ import 'dart:io';
 import 'dart:convert';
 import '../system/main.dart';
 import '../partner/ourarestaurant.dart';
+import 'package:geocoding/geocoding.dart';
 
 
 class CreateRestaurantPage extends StatefulWidget {
@@ -107,22 +108,41 @@ class _CreateRestaurantPageState extends State<CreateRestaurantPage> {
         throw Exception('Partner information not found');
       }
 
-      // Create restaurant document
-      DocumentReference restaurantRef = await FirebaseFirestore.instance.collection('restaurants').add({
-        'name': _nameController.text.trim(),
-        'location': _locationController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'restaurantImage': _restaurantImageBase64,
-        'promotionImage': _promotionImageBase64,
-        'ownerId': currentUser.uid,
-        'ownerName': partnerDoc.get('ownerName'),
-        'isVerified': false,
-        'isAvailable': false,
-        'rating': 0.0,
-        'reviewCount': 0,
-        'createdAt': FieldValue.serverTimestamp(),
-        'queue': 0,
-      });
+      double? latitude;
+double? longitude;
+
+try {
+  String address = _locationController.text.trim();
+  List<Location> locations = await locationFromAddress(address);
+  
+  if (locations.isNotEmpty) {
+    latitude = locations.first.latitude;
+    longitude = locations.first.longitude;
+    print('✅ แปลงที่อยู่เป็นพิกัดสำเร็จ: $address -> ($latitude, $longitude)');
+  }
+} catch (e) {
+  print('⚠️ ไม่สามารถแปลงที่อยู่เป็นพิกัดได้: $e');
+  // ไม่ต้อง return เพื่อให้สร้างร้านได้แม้ไม่มีพิกัด
+}
+
+// ปรับ DocumentReference restaurantRef โดยเพิ่มฟิลด์ latitude และ longitude
+DocumentReference restaurantRef = await FirebaseFirestore.instance.collection('restaurants').add({
+  'name': _nameController.text.trim(),
+  'location': _locationController.text.trim(),
+  'description': _descriptionController.text.trim(),
+  'restaurantImage': _restaurantImageBase64,
+  'promotionImage': _promotionImageBase64,
+  'ownerId': currentUser.uid,
+  'ownerName': partnerDoc.get('ownerName'),
+  'isVerified': false,
+  'isAvailable': false,
+  'rating': 0.0,
+  'reviewCount': 0,
+  'createdAt': FieldValue.serverTimestamp(),
+  'queue': 0,
+  'latitude': latitude,  // เพิ่มฟิลด์ latitude
+  'longitude': longitude, // เพิ่มฟิลด์ longitude
+});
       
       // Update partner document with restaurant reference
       await FirebaseFirestore.instance.collection('partners').doc(currentUser.uid).update({

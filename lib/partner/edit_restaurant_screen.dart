@@ -1,6 +1,132 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geocoding/geocoding.dart';
+
+// เพิ่มคลาส LocationService ตรงนี้ ก่อนคลาส EditRestaurantScreen
+class LocationService {
+  // อัปเดตพิกัดจากที่อยู่ (เช่น จากหน้าแอดมิน)
+  static Future<bool> updateRestaurantCoordinates(String restaurantId, String address) async {
+    try {
+      // แปลงที่อยู่เป็นพิกัด
+      List<Location> locations = await locationFromAddress(address);
+      
+      if (locations.isNotEmpty) {
+        Location location = locations.first;
+        
+        // อัปเดตใน Firestore
+        await FirebaseFirestore.instance
+            .collection('restaurants')
+            .doc(restaurantId)
+            .update({
+              'latitude': location.latitude,
+              'longitude': location.longitude,
+            });
+        
+        print('✅ อัปเดตพิกัดสำเร็จ: $address -> (${location.latitude}, ${location.longitude})');
+        return true;
+      }
+      
+      print('❌ ไม่พบพิกัดสำหรับที่อยู่: $address');
+      return false;
+    } catch (e) {
+      print('❌ เกิดข้อผิดพลาดในการอัปเดตพิกัด: $e');
+      return false;
+    }
+  }
+  
+  // อัปเดตพิกัดโดยตรง (ระบุละติจูด/ลองจิจูด)
+  static Future<bool> updateRestaurantCoordinatesDirect(
+      String restaurantId, double latitude, double longitude) async {
+    try {
+      // อัปเดตใน Firestore
+      await FirebaseFirestore.instance
+          .collection('restaurants')
+          .doc(restaurantId)
+          .update({
+            'latitude': latitude,
+            'longitude': longitude,
+          });
+      
+      print('✅ อัปเดตพิกัดสำเร็จ: ($latitude, $longitude)');
+      return true;
+    } catch (e) {
+      print('❌ เกิดข้อผิดพลาดในการอัปเดตพิกัด: $e');
+      return false;
+    }
+  }
+
+  // อัปเดตพิกัดของร้านอาหารทั้งหมดจากที่อยู่
+  static Future<void> batchUpdateRestaurantCoordinates() async {
+    try {
+      // ดึงร้านอาหารทั้งหมดที่ผ่านการยืนยัน
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('restaurants')
+          .where('isVerified', isEqualTo: true)
+          .get();
+      
+      print('🔍 พบร้านอาหารทั้งหมด ${snapshot.docs.length} ร้าน');
+      
+      int successCount = 0;
+      int errorCount = 0;
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // ข้ามร้านที่มีพิกัดแล้ว
+        if (data.containsKey('latitude') && data.containsKey('longitude')) {
+          print('⏩ ข้ามร้าน ${data['name']} เนื่องจากมีพิกัดแล้ว');
+          continue;
+        }
+        
+        // ดึงที่อยู่ร้านอาหาร
+        String location = data['location'] ?? '';
+        if (location.isEmpty) {
+          print('⚠️ ร้าน ${data['name']} ไม่มีข้อมูลที่อยู่');
+          errorCount++;
+          continue;
+        }
+        
+        try {
+          print('🔄 กำลังแปลงที่อยู่เป็นพิกัด: ${data['name']} - $location');
+          
+          // แปลงที่อยู่เป็นพิกัด
+          List<Location> locations = await locationFromAddress(location);
+          
+          if (locations.isNotEmpty) {
+            Location locationData = locations.first;
+            
+            // อัปเดตข้อมูลใน Firestore
+            await FirebaseFirestore.instance
+                .collection('restaurants')
+                .doc(doc.id)
+                .update({
+                  'latitude': locationData.latitude,
+                  'longitude': locationData.longitude,
+                });
+            
+            print('✅ อัปเดตพิกัดสำเร็จ: ${data['name']} -> (${locationData.latitude}, ${locationData.longitude})');
+            successCount++;
+          } else {
+            print('❌ ไม่พบพิกัดสำหรับที่อยู่: ${data['name']} - $location');
+            errorCount++;
+          }
+          
+          // หน่วงเวลาเล็กน้อยเพื่อไม่ให้ API โดน rate limit
+          await Future.delayed(const Duration(milliseconds: 500));
+        } catch (e) {
+          print('❌ เกิดข้อผิดพลาดในการแปลงที่อยู่: ${data['name']} - $e');
+          errorCount++;
+        }
+      }
+      
+      print('🏁 อัปเดตเสร็จสิ้น | สำเร็จ: $successCount | ผิดพลาด: $errorCount');
+    } catch (e) {
+      print('❌ เกิดข้อผิดพลาดในการอัปเดตแบบกลุ่ม: $e');
+    }
+  }
+}
 
 class EditRestaurantScreen extends StatefulWidget {
   final Map<String, dynamic>? restaurantData;
@@ -13,9 +139,81 @@ class EditRestaurantScreen extends StatefulWidget {
 
 class _EditRestaurantScreenState extends State<EditRestaurantScreen> {
   File? _image;
-  bool _isEditing = false; // สถานะการแก้ไข
+  bool _isEditing = false;
+  bool _isLoading = false; 
+  bool _isCalculatingCoordinates = false; // เพิ่มตัวแปรนี้
   TextEditingController _nameController = TextEditingController(text: "Fam Time");
   TextEditingController _locationController = TextEditingController(text: "Siam Square Soi 4");
+  double? _latitude; // เพิ่มตัวแปรนี้
+  double? _longitude; // เพิ่มตัวแปรนี้
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.restaurantData != null) {
+      _nameController.text = widget.restaurantData!['name'] ?? 'Fam Time';
+      _locationController.text = widget.restaurantData!['location'] ?? 'Siam Square Soi 4';
+      _latitude = widget.restaurantData!['latitude'];
+      _longitude = widget.restaurantData!['longitude'];
+    }
+  }
+
+  // เพิ่มฟังก์ชันนี้
+  Future<void> _calculateCoordinates() async {
+    if (_locationController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('กรุณากรอกที่อยู่ก่อนคำนวณพิกัด')),
+      );
+      return;
+    }
+    
+    setState(() {
+      _isCalculatingCoordinates = true;
+    });
+    
+    try {
+      if (widget.restaurantData != null && widget.restaurantData!.containsKey('restaurantId')) {
+        String restaurantId = widget.restaurantData!['restaurantId'];
+        
+        bool success = await LocationService.updateRestaurantCoordinates(
+          restaurantId,
+          _locationController.text,
+        );
+        
+        if (success) {
+          // ดึงข้อมูลพิกัดที่อัปเดต
+          DocumentSnapshot doc = await FirebaseFirestore.instance
+              .collection('restaurants')
+              .doc(restaurantId)
+              .get();
+          
+          if (doc.exists) {
+            final data = doc.data() as Map<String, dynamic>;
+            setState(() {
+              _latitude = data['latitude'];
+              _longitude = data['longitude'];
+            });
+          }
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('คำนวณพิกัดสำเร็จ: $_latitude, $_longitude')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ไม่พบพิกัดสำหรับที่อยู่นี้')),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+      );
+    } finally {
+      setState(() {
+        _isCalculatingCoordinates = false;
+      });
+    }
+  }
 
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
@@ -32,11 +230,48 @@ class _EditRestaurantScreenState extends State<EditRestaurantScreen> {
     });
   }
 
-  void _saveChanges() {
+  void _saveChanges() async {
     // บันทึกการเปลี่ยนแปลง
     setState(() {
-      _isEditing = false; // ปิดโหมดแก้ไข
+      _isLoading = true; // ตั้งค่าตัวแปรแสดงสถานะการโหลด (อาจต้องเพิ่มตัวแปรนี้)
     });
+
+    try {
+      // ตรวจสอบว่ามี restaurantData และ restaurantId หรือไม่
+      if (widget.restaurantData != null && widget.restaurantData!.containsKey('restaurantId')) {
+        String restaurantId = widget.restaurantData!['restaurantId'];
+        
+        // อัปเดตข้อมูลทั่วไป
+        await FirebaseFirestore.instance
+            .collection('restaurants')
+            .doc(restaurantId)
+            .update({
+              'name': _nameController.text,
+              'location': _locationController.text,
+              // อัปเดตข้อมูลอื่นๆ ตามที่จำเป็น
+            });
+        
+        // อัปเดตพิกัดจากที่อยู่
+        await LocationService.updateRestaurantCoordinates(
+          restaurantId, 
+          _locationController.text
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('บันทึกข้อมูลเรียบร้อยแล้ว')),
+        );
+      }
+    } catch (e) {
+      print('Error saving changes: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เกิดข้อผิดพลาดในการบันทึกข้อมูล')),
+      );
+    } finally {
+      setState(() {
+        _isEditing = false; // ปิดโหมดแก้ไข
+        _isLoading = false; // ปิดสถานะการโหลด
+      });
+    }
   }
 
   void _toggleEditing() {
@@ -47,6 +282,7 @@ class _EditRestaurantScreenState extends State<EditRestaurantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // โค้ดส่วนที่เหลือยังคงเหมือนเดิม
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -122,6 +358,42 @@ class _EditRestaurantScreenState extends State<EditRestaurantScreen> {
                     _buildTextField("Name Restaurant", _nameController),
                     SizedBox(height: 15),
                     _buildTextField("Location", _locationController),
+
+                    // เพิ่มปุ่มคำนวณพิกัด
+                    if (_isEditing)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _isCalculatingCoordinates ? null : _calculateCoordinates,
+                              icon: _isCalculatingCoordinates 
+                                ? const SizedBox(
+                                    width: 20, 
+                                    height: 20, 
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.location_searching),
+                              label: const Text('คำนวณพิกัดจากที่อยู่'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF8B2323),
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 10),
+                            if (_latitude != null && _longitude != null)
+                              Text(
+                                'พิกัดปัจจุบัน: $_latitude, $_longitude',
+                                style: const TextStyle(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),

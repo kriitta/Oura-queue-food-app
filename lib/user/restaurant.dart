@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
+import 'dart:math';
 
 class RestaurantDetailPage extends StatefulWidget {
   final String image;
@@ -12,7 +14,8 @@ class RestaurantDetailPage extends StatefulWidget {
   final Color backgroundColor;
   final List<String> promotionImages;
   final bool isFirestoreImage;
-  final String restaurantId; // เพิ่มฟิลด์ restaurantId
+  final String restaurantId;
+  final double? distance; // Parameter for distance
 
   const RestaurantDetailPage({
     super.key,
@@ -23,7 +26,8 @@ class RestaurantDetailPage extends StatefulWidget {
     required this.backgroundColor,
     required this.promotionImages,
     this.isFirestoreImage = false,
-    required this.restaurantId, // เพิ่ม restaurantId เพื่อใช้อ้างอิงร้านอาหารใน Firestore
+    required this.restaurantId,
+    this.distance, // Include distance parameter
   });
 
   @override
@@ -33,6 +37,82 @@ class RestaurantDetailPage extends StatefulWidget {
 class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
   final _pageController = PageController();
   bool _isLoading = false;
+  double? _distance; // Variable to store distance
+  bool _isLoadingDistance = false; // Loading state for distance calculation
+
+  @override
+  void initState() {
+    super.initState();
+    _distance = widget.distance;
+    if (_distance == null || _distance! < 0) {
+      _fetchRestaurantCoordinates();
+    }
+  }
+
+  // Function to fetch restaurant coordinates and calculate distance
+  Future<void> _fetchRestaurantCoordinates() async {
+    setState(() {
+      _isLoadingDistance = true;
+    });
+
+    try {
+      // Get restaurant coordinates from Firestore
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('restaurants')
+          .doc(widget.restaurantId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        double? latitude = data['latitude'] is double ? data['latitude'] : null;
+        double? longitude = data['longitude'] is double ? data['longitude'] : null;
+
+        if (latitude != null && longitude != null) {
+          // Check location permission
+          LocationPermission permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+
+          if (permission == LocationPermission.always || 
+              permission == LocationPermission.whileInUse) {
+            // Get user's current position
+            Position position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high
+            );
+
+            // Calculate distance
+            double calculatedDistance = _calculateDistance(
+              position.latitude,
+              position.longitude,
+              latitude,
+              longitude
+            );
+
+            setState(() {
+              _distance = calculatedDistance;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching restaurant coordinates: $e');
+    } finally {
+      setState(() {
+        _isLoadingDistance = false;
+      });
+    }
+  }
+
+  // Calculate distance between two coordinates (Haversine formula)
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    var p = 0.017453292519943295; // Pi/180
+    var c = cos;
+    var a = 0.5 - c((lat2 - lat1) * p)/2 + 
+            c(lat1 * p) * c(lat2 * p) * 
+            (1 - c((lon2 - lon1) * p))/2;
+    return 12742 * asin(sqrt(a)); // 2*R*asin(sqrt(a)) where R = 6371 km
+  }
 
   void _showQueueNowDialog() {
     showDialog(
@@ -128,7 +208,8 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.remove_circle, color: Color(0xFF8B2323)),
+                        icon: const Icon(Icons.remove_circle,
+                            color: Color(0xFF8B2323)),
                         iconSize: 36,
                         onPressed: () {
                           setState(() {
@@ -142,7 +223,8 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                         },
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
                         decoration: BoxDecoration(
                           border: Border.all(color: Colors.black54),
                           borderRadius: BorderRadius.circular(10),
@@ -156,7 +238,8 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.add_circle, color: Color(0xFF8B2323)),
+                        icon: const Icon(Icons.add_circle,
+                            color: Color(0xFF8B2323)),
                         iconSize: 36,
                         onPressed: () {
                           setState(() {
@@ -220,14 +303,14 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     );
   }
 
-  // เพิ่มฟังก์ชันสำหรับเพิ่มคิวใน Firestore
+  // Function to add queue now in Firestore - combine implementations from both files
   Future<void> _addQueueNow(String tableType, int numberOfPersons) async {
     try {
       setState(() {
         _isLoading = true;
       });
 
-      // ตรวจสอบว่าผู้ใช้ล็อกอินหรือยัง
+      // Check if user is logged in
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -239,7 +322,7 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
         return;
       }
 
-      // สร้างข้อมูลคิวใหม่
+      // Create new queue data
       Map<String, dynamic> queueData = {
         'userId': currentUser.uid,
         'restaurantId': widget.restaurantId,
@@ -250,11 +333,35 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
         'status': 'waiting',
       };
 
-      // เพิ่มคิวลงใน Firestore
-      await FirebaseFirestore.instance.collection('queues').add(queueData);
+      // Add queue to Firestore
+      DocumentReference queueRef = await FirebaseFirestore.instance
+          .collection('queues')
+          .add(queueData);
 
-      // เพิ่มจำนวนคิวในร้านอาหาร
-      await FirebaseFirestore.instance.collection('restaurants').doc(widget.restaurantId).update({
+      // Add to myQueue of user (from second file)
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('myQueue')
+          .add({
+        'restaurantId': widget.restaurantId,
+        'restaurantName': widget.name,
+        'restaurantLocation': widget.location,
+        'tableType': tableType,
+        'numberOfPersons': numberOfPersons,
+        'status': 'waiting',
+        'queueCode': 'W-${queueRef.id.substring(0, 5).toUpperCase()}',
+        'queueNumber': '-', // No specific time yet
+        'isReservation': false,
+        'createdAt': FieldValue.serverTimestamp(),
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      // Increase queue count in restaurant
+      await FirebaseFirestore.instance
+          .collection('restaurants')
+          .doc(widget.restaurantId)
+          .update({
         'queueCount': FieldValue.increment(1),
       });
 
@@ -280,12 +387,14 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          border: Border.all(color: isSelected ? Color(0xFF8B2323) : Colors.grey),
+          border:
+              Border.all(color: isSelected ? Color(0xFF8B2323) : Colors.grey),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
           children: [
-            Icon(icon, color: isSelected ? const Color(0xFF8B2323) : Colors.grey),
+            Icon(icon,
+                color: isSelected ? const Color(0xFF8B2323) : Colors.grey),
             const SizedBox(height: 5),
             Text(
               type,
@@ -338,9 +447,12 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     );
   }
 
+  // Merge both implementations of queue in advance dialog, incorporating date picker from second file
   void _showQueueInAdvanceDialog() {
+    DateTime selectedDate = DateTime.now();
     TimeOfDay selectedTime = TimeOfDay.now();
     int persons = 1;
+    String selectedTableType = '1-2 persons';
 
     showDialog(
       context: context,
@@ -365,6 +477,56 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                     ),
                     const SizedBox(height: 20),
 
+                    // Date selection (from second file)
+                    const Text('Select booking date:',
+                        style: TextStyle(fontSize: 16)),
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime.now(),
+                          lastDate:
+                              DateTime.now().add(const Duration(days: 30)),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: const ColorScheme.light(
+                                  primary: Color(0xFF8B2323),
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            selectedDate = picked;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFF8B2323)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Color(0xFF8B2323),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Time selection
                     const Text(
                       'Select booking time:',
                       style: TextStyle(fontSize: 16),
@@ -412,6 +574,62 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
 
                     const SizedBox(height: 20),
 
+                    // Table type selection (from first file)
+                    const Text(
+                      'Type of tables:',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _buildTableTypeButton(
+                          '1-2 persons',
+                          Icons.people,
+                          selectedTableType,
+                          (value) {
+                            setState(() {
+                              selectedTableType = value;
+                              if (value == '1-2 persons') {
+                                persons = 1;
+                              } else if (value == '3-6 persons') {
+                                persons = 3;
+                              } else if (value == '7-12 persons') {
+                                persons = 7;
+                              }
+                            });
+                          },
+                        ),
+                        _buildTableTypeButton(
+                          '3-6 persons',
+                          Icons.group,
+                          selectedTableType,
+                          (value) {
+                            setState(() {
+                              selectedTableType = value;
+                              persons = 3;
+                            });
+                          },
+                        ),
+                        _buildTableTypeButton(
+                          '7-12 persons',
+                          Icons.groups,
+                          selectedTableType,
+                          (value) {
+                            setState(() {
+                              selectedTableType = value;
+                              persons = 7;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Number of persons
                     const Text(
                       'Number of persons:',
                       style: TextStyle(fontSize: 16),
@@ -426,7 +644,12 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                           iconSize: 36,
                           onPressed: () {
                             setState(() {
-                              if (persons > 1) persons--;
+                              int minPersons = selectedTableType == '1-2 persons'
+                                  ? 1
+                                  : selectedTableType == '3-6 persons'
+                                      ? 3
+                                      : 7;
+                              if (persons > minPersons) persons--;
                             });
                           },
                         ),
@@ -451,19 +674,28 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                           iconSize: 36,
                           onPressed: () {
                             setState(() {
-                              if (persons < 20) persons++;
+                              int maxPersons = selectedTableType == '1-2 persons'
+                                  ? 2
+                                  : selectedTableType == '3-6 persons'
+                                      ? 6
+                                      : 12;
+                              if (persons < maxPersons) persons++;
                             });
                           },
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 20),
 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        TextButton(
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  side: const BorderSide(
+                                      color: Color(0xFF8B2323), width: 1))),
                           onPressed: () {
                             Navigator.of(context).pop();
                           },
@@ -479,11 +711,19 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF8B2323),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(15),
                             ),
                           ),
                           onPressed: () {
-                            _addQueueInAdvance(selectedTime, persons);
+                            // Create full datetime from date and time
+                            final fullDateTime = DateTime(
+                              selectedDate.year,
+                              selectedDate.month,
+                              selectedDate.day,
+                              selectedTime.hour,
+                              selectedTime.minute,
+                            );
+                            _addQueueInAdvance(fullDateTime, persons, selectedTableType);
                             Navigator.of(context).pop();
                           },
                           child: const Text(
@@ -503,14 +743,14 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     );
   }
 
-  // เพิ่มฟังก์ชันสำหรับจองคิวล่วงหน้า
-  Future<void> _addQueueInAdvance(TimeOfDay selectedTime, int persons) async {
+  // Combined implementation for advance booking
+  Future<void> _addQueueInAdvance(
+      DateTime bookingDateTime, int persons, String tableType) async {
     try {
       setState(() {
         _isLoading = true;
       });
 
-      // ตรวจสอบว่าผู้ใช้ล็อกอินหรือยัง
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -522,34 +762,49 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
         return;
       }
 
-      // สร้างวันเวลาที่จอง
-      DateTime now = DateTime.now();
-      DateTime bookingTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        selectedTime.hour,
-        selectedTime.minute,
-      );
-
-      // ถ้าเวลาที่เลือกเป็นเวลาในอดีต ให้เพิ่มไปอีก 1 วัน
-      if (bookingTime.isBefore(now)) {
-        bookingTime = bookingTime.add(const Duration(days: 1));
-      }
-
-      // สร้างข้อมูลการจองคิวล่วงหน้า
+      // Add to advanceBookings collection
       Map<String, dynamic> advanceBookingData = {
         'userId': currentUser.uid,
         'restaurantId': widget.restaurantId,
         'restaurantName': widget.name,
-        'bookingTime': Timestamp.fromDate(bookingTime),
+        'bookingTime': Timestamp.fromDate(bookingDateTime),
         'numberOfPersons': persons,
+        'tableType': tableType, // Add table type to booking data
         'createdAt': FieldValue.serverTimestamp(),
         'status': 'pending',
       };
 
-      // เพิ่มการจองลงใน Firestore
-      await FirebaseFirestore.instance.collection('advanceBookings').add(advanceBookingData);
+      DocumentReference docRef = await FirebaseFirestore.instance
+          .collection('advanceBookings')
+          .add(advanceBookingData);
+
+      // Add to user's myQueue collection
+      try {
+        print('🟢 กำลังเพิ่มข้อมูลลง myQueue');
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .collection('myQueue')
+            .add({
+          'restaurantId': widget.restaurantId,
+          'restaurantName': widget.name,
+          'restaurantLocation': widget.location,
+          'bookingTime': Timestamp.fromDate(bookingDateTime),
+          'numberOfPersons': persons,
+          'tableType': tableType, // Add table type to myQueue
+          'status': 'Booked',
+          'queueNumber':
+              '${bookingDateTime.hour.toString().padLeft(2, '0')}:${bookingDateTime.minute.toString().padLeft(2, '0')}',
+          'queueCode': 'R-${docRef.id.substring(0, 5).toUpperCase()}',
+          'isReservation': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        print('✅ เพิ่มลง myQueue สำเร็จ');
+      } catch (e) {
+        print('❌ เพิ่มลง myQueue ไม่สำเร็จ: $e');
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('จองคิวล่วงหน้าสำเร็จ!')),
@@ -567,6 +822,11 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Format distance text
+    String distanceText = _distance != null && _distance! >= 0 
+        ? '${_distance!.toStringAsFixed(1)} km' 
+        : _isLoadingDistance ? 'กำลังคำนวณระยะทาง...' : 'ไม่ทราบระยะทาง';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -584,8 +844,9 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading 
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B2323)))
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF8B2323)))
           : SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -594,7 +855,6 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                   children: [
                     _buildRestaurantImage(),
                     const SizedBox(height: 20),
-
                     Text(
                       widget.name,
                       style: const TextStyle(
@@ -603,23 +863,64 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 10),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                        const Icon(Icons.location_on,
+                            size: 16, color: Colors.grey),
                         const SizedBox(width: 4),
-                        Text(
-                          widget.location,
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 16,
+                        Expanded(
+                          child: Text(
+                            widget.location,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 16,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 5),
-
+                    // Add distance information
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.directions,
+                            size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          distanceText,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
+                        ),
+                        // Add refresh button for distance
+                        if (!_isLoadingDistance)
+                          IconButton(
+                            icon: const Icon(
+                              Icons.refresh,
+                              size: 14,
+                              color: Colors.grey,
+                            ),
+                            onPressed: _fetchRestaurantCoordinates,
+                            tooltip: 'รีเฟรชระยะทาง',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        if (_isLoadingDistance)
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.grey,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -634,9 +935,7 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 30),
-
                     const Text(
                       'Choose the type of reservation',
                       style: TextStyle(
@@ -645,7 +944,6 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -662,7 +960,6 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                       ],
                     ),
                     const SizedBox(height: 30),
-
                     const Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
@@ -674,10 +971,8 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
                     _buildPromotionCarousel(),
                     const SizedBox(height: 20),
-
                     SmoothPageIndicator(
                       controller: _pageController,
                       count: widget.promotionImages.length,
@@ -695,7 +990,7 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     );
   }
 
-  // เพิ่มเมธอดสำหรับแสดงรูปภาพร้านอาหาร (รองรับทั้ง asset และ base64)
+  // Method to display restaurant image (supports both asset and base64)
   Widget _buildRestaurantImage() {
     if (widget.isFirestoreImage && widget.image.isNotEmpty) {
       try {
@@ -720,8 +1015,13 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                     color: widget.backgroundColor,
                     child: Center(
                       child: Text(
-                        widget.name.isNotEmpty ? widget.name.substring(0, 1).toUpperCase() : "?",
-                        style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.bold),
+                        widget.name.isNotEmpty
+                            ? widget.name.substring(0, 1).toUpperCase()
+                            : "?",
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 60,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                   );
@@ -740,8 +1040,13 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
           ),
           child: Center(
             child: Text(
-              widget.name.isNotEmpty ? widget.name.substring(0, 1).toUpperCase() : "?",
-              style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.bold),
+              widget.name.isNotEmpty
+                  ? widget.name.substring(0, 1).toUpperCase()
+                  : "?",
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 60,
+                  fontWeight: FontWeight.bold),
             ),
           ),
         );
@@ -768,8 +1073,13 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                   color: widget.backgroundColor,
                   child: Center(
                     child: Text(
-                      widget.name.isNotEmpty ? widget.name.substring(0, 1).toUpperCase() : "?",
-                      style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.bold),
+                      widget.name.isNotEmpty
+                          ? widget.name.substring(0, 1).toUpperCase()
+                          : "?",
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 60,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 );
@@ -781,7 +1091,7 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     }
   }
 
-  // เพิ่มเมธอดสำหรับแสดงรูปภาพโปรโมชั่น (รองรับทั้ง asset และ base64)
+  // Method to display promotion carousel
   Widget _buildPromotionCarousel() {
     if (widget.promotionImages.isEmpty) {
       return Container(
@@ -810,7 +1120,8 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
             itemBuilder: (context, index) {
               return GestureDetector(
                 onTap: () {
-                  _showPromotionPopup(widget.promotionImages[index], widget.isFirestoreImage);
+                  _showPromotionPopup(
+                      widget.promotionImages[index], widget.isFirestoreImage);
                 },
                 child: _buildPromotionImage(widget.promotionImages[index]),
               );
@@ -821,7 +1132,7 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     );
   }
 
-  // แยกเมธอดสำหรับสร้างรูปภาพโปรโมชั่น
+  // Method to build promotion image
   Widget _buildPromotionImage(String imagePath) {
     if (widget.isFirestoreImage && imagePath.isNotEmpty) {
       try {
@@ -881,6 +1192,7 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     }
   }
 
+  // Method to build reservation option buttons
   Widget _buildReservationOption({
     required IconData icon,
     required String title,

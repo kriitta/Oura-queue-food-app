@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:project_final/partner/edit_restaurant_screen.dart';
 import '../system/main.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import './verification.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
+import 'package:geocoding/geocoding.dart';
+
 
 
 void main() {
@@ -415,8 +418,62 @@ class AwaitingVerificationView extends StatelessWidget {
   }
 }
 
-class VerifiedRestaurantsView extends StatelessWidget {
+class VerifiedRestaurantsView extends StatefulWidget {
   const VerifiedRestaurantsView({super.key});
+
+  @override
+  _VerifiedRestaurantsViewState createState() => _VerifiedRestaurantsViewState();
+}
+
+class _VerifiedRestaurantsViewState extends State<VerifiedRestaurantsView> {
+  bool _isUpdatingCoordinates = false;
+
+  // เพิ่มฟังก์ชันนี้
+  Future<void> _updateAllCoordinates() async {
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("ยืนยันการอัปเดตพิกัด"),
+        content: const Text("คุณต้องการอัปเดตพิกัดของร้านอาหารทั้งหมดหรือไม่? กระบวนการนี้อาจใช้เวลานาน"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("ยกเลิก"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("อัปเดต", style: TextStyle(color: Color(0xFF8B2323))),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirm == true) {
+      setState(() {
+        _isUpdatingCoordinates = true;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('กำลังอัปเดตพิกัดร้านอาหาร โปรดรอสักครู่...')),
+      );
+      
+      try {
+        await LocationService.batchUpdateRestaurantCoordinates();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('อัปเดตพิกัดร้านอาหารเรียบร้อยแล้ว')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
+        );
+      } finally {
+        setState(() {
+          _isUpdatingCoordinates = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -425,14 +482,21 @@ class VerifiedRestaurantsView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Successfully Verified Title
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'Successfully Verified',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: ElevatedButton.icon(
+              onPressed: _isUpdatingCoordinates ? null : _updateAllCoordinates,
+              icon: _isUpdatingCoordinates 
+                ? const SizedBox(
+                    width: 20, 
+                    height: 20, 
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Icon(Icons.location_on),
+              label: const Text('อัปเดตพิกัดร้านอาหารทั้งหมด'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B2323),
+                foregroundColor: Colors.white,
               ),
             ),
           ),

@@ -8,6 +8,7 @@ import '../system/firebase_options.dart';
 import '../user/main.dart';
 import '../partner/create_restaurant.dart';
 import '../admin/verify.dart'; // เพิ่มการ import หน้า admin (สร้างหน้านี้ตามต้องการ)
+import '../system/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,10 @@ void main() async {
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
   );
+  // เริ่มต้นระบบการแจ้งเตือน
+  final notificationService = NotificationService();
+  await notificationService.init();
+
   runApp(const MainApp());
 }
 
@@ -44,7 +49,7 @@ class MainApp extends StatelessWidget {
 }
 
 class AuthCheckPage extends StatelessWidget {
-  AuthCheckPage({Key? key}) : super(key: key);
+  AuthCheckPage({super.key});
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

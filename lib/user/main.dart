@@ -11,12 +11,17 @@ import 'profile.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../system/firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../system/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // เริ่มต้นระบบการแจ้งเตือน
+  final notificationService = NotificationService();
+  await notificationService.init();
+
   runApp(const QuraApp());
 }
 

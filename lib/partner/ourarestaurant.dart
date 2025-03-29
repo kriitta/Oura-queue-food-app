@@ -8,8 +8,7 @@ import 'manage_reservation_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'dart:math';
-
-
+import '../system/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,7 +53,7 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     _loadRestaurantData();
-    
+
     // Initialize pages with loading placeholders first
     _pages = [
       const Center(child: CircularProgressIndicator(color: Color(0xFF8B2323))),
@@ -80,7 +79,8 @@ class _MainPageState extends State<MainPage> {
         throw Exception('No active restaurant found');
       }
 
-      Map<String, dynamic> settingsData = settingsDoc.data() as Map<String, dynamic>;
+      Map<String, dynamic> settingsData =
+          settingsDoc.data() as Map<String, dynamic>;
       String restaurantId = settingsData['restaurantId'];
 
       // Fetch restaurant data
@@ -94,8 +94,12 @@ class _MainPageState extends State<MainPage> {
       }
 
       // Set restaurant data
-      restaurantData = restaurantDoc.data() as Map<String, dynamic>;
-      
+      restaurantData = {
+        ...restaurantDoc.data() as Map<String, dynamic>,
+        'restaurantId': restaurantDoc.id,
+      };
+      print('📡 loaded restaurantData = $restaurantData');
+
       // Now initialize pages with the restaurant data
       _pages = [
         HomeScreen(restaurantData: restaurantData),
@@ -103,6 +107,7 @@ class _MainPageState extends State<MainPage> {
         RewardScreen(restaurantData: restaurantData),
         SettingScreen(restaurantData: restaurantData),
       ];
+      // print('📦 Sending restaurantData to HomeScreen: $restaurantData');
     } catch (e) {
       print('Error loading restaurant data: $e');
       // Handle error - maybe show an error screen or redirect back to login
@@ -115,6 +120,20 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    final pages = restaurantData == null
+        ? [
+            const Center(child: CircularProgressIndicator()),
+            const Center(child: CircularProgressIndicator()),
+            const Center(child: CircularProgressIndicator()),
+            const Center(child: CircularProgressIndicator()),
+          ]
+        : [
+            HomeScreen(restaurantData: restaurantData),
+            ReservationScreen(restaurantData: restaurantData),
+            RewardScreen(restaurantData: restaurantData),
+            SettingScreen(restaurantData: restaurantData),
+          ];
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF8B2323),
@@ -128,20 +147,21 @@ class _MainPageState extends State<MainPage> {
         ),
         automaticallyImplyLeading: false,
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B2323)))
-        : IndexedStack(
-            index: _currentIndex, // ใช้ currentIndex ในการเลือกหน้า
-            children: _pages, // หน้าใน _pages
-          ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF8B2323)))
+          : IndexedStack(
+              index: _currentIndex,
+              children: pages,
+            ),
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: const Color(0xFF8B2323),
         unselectedItemColor: Colors.grey,
-        currentIndex: _currentIndex, // ใช้ _currentIndex เพื่อเปลี่ยนหน้า
+        currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() {
-            _currentIndex = index; // เปลี่ยนหน้าเมื่อเลือก
+            _currentIndex = index;
           });
         },
         backgroundColor: Colors.white,
@@ -180,128 +200,114 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> tableQueues = [];
   bool isLoading = true;
+  bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    _loadRestaurantQueues();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    print('📥 HomeScreen received restaurantData: ${widget.restaurantData}');
+    if (!_initialized && widget.restaurantData != null) {
+      fetchWalkInQueues();
+      _initialized = true;
+    }
   }
 
-  Future<void> _loadRestaurantQueues() async {
+  Future<void> fetchWalkInQueues() async {
     setState(() {
       isLoading = true;
     });
 
     try {
-      if (widget.restaurantData == null || widget.restaurantData!['restaurantId'] == null) {
-        // Generate demo data if no restaurant data is available
-        tableQueues = [
-          {
-            'type': 'Table type A : 1 - 2 persons',
-            'queueNow': '#A097',
-            'queueNext': '#A098',
-            'seatNow': '2',
-            'seatNext': '1',
-          },
-          {
-            'type': 'Table type B : 3 - 6 persons',
-            'queueNow': '#B032',
-            'queueNext': '#B033',
-            'seatNow': '3',
-            'seatNext': '6',
-          },
-          {
-            'type': 'Table type C : 7 - 12 persons',
-            'queueNow': '#C027',
-            'queueNext': '#C028',
-            'seatNow': '9',
-            'seatNext': '11',
-          },
-        ];
-      } else {
-        // Get restaurant ID
-        String restaurantId = widget.restaurantData!['restaurantId'];
-        
-        // Fetch real queue data from Firestore
-        QuerySnapshot queueSnapshot = await FirebaseFirestore.instance
-            .collection('restaurants')
-            .doc(restaurantId)
-            .collection('tables')
-            .get();
-            
-        if (queueSnapshot.docs.isNotEmpty) {
-          tableQueues = queueSnapshot.docs.map((doc) {
-            Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-            return {
-              'type': data['type'] ?? 'Unknown table type',
-              'queueNow': data['queueNow'] ?? '#---',
-              'queueNext': data['queueNext'] ?? '#---',
-              'seatNow': data['seatNow']?.toString() ?? '0',
-              'seatNext': data['seatNext']?.toString() ?? '0',
-            };
-          }).toList();
-        } else {
-          // If no queue data exists yet, initialize with default values
-          tableQueues = [
-            {
-              'type': 'Table type A : 1 - 2 persons',
-              'queueNow': '#A001',
-              'queueNext': '#A002',
-              'seatNow': '0',
-              'seatNext': '0',
-            },
-            {
-              'type': 'Table type B : 3 - 6 persons',
-              'queueNow': '#B001',
-              'queueNext': '#B002',
-              'seatNow': '0',
-              'seatNext': '0',
-            },
-            {
-              'type': 'Table type C : 7 - 12 persons',
-              'queueNow': '#C001',
-              'queueNext': '#C002',
-              'seatNow': '0',
-              'seatNext': '0',
-            },
-          ];
-          
-          // Create the initial table types in Firestore
-          for (var table in tableQueues) {
-            await FirebaseFirestore.instance
-                .collection('restaurants')
-                .doc(restaurantId)
-                .collection('tables')
-                .add(table);
-          }
-        }
+      final restaurantId = widget.restaurantData?['restaurantId'];
+      print('🍽 restaurantId from widget: $restaurantId'); // ✅ สำคัญ!
+      if (restaurantId == null) {
+        print('❗ restaurantId is null');
+        return;
       }
-    } catch (e) {
-      print('Error loading queue data: $e');
-      // Fallback to demo data
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('queues')
+          .where('restaurantId', isEqualTo: restaurantId)
+          .where('isReservation', isEqualTo: false)
+          .where('status', isEqualTo: 'waiting')
+          .orderBy('timestamp')
+          .get();
+
+      print('📦 Walk-in queues found: ${snapshot.docs.length}');
+
+      Map<String, List<QueryDocumentSnapshot>> groupedQueues = {
+        '1-2 persons': [],
+        '3-6 persons': [],
+        '7-12 persons': [],
+      };
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final tableType = data['tableType'];
+        if (tableType == '1-2 persons') {
+          groupedQueues['1-2 persons']!.add(doc);
+        } else if (tableType == '3-6 persons') {
+          groupedQueues['3-6 persons']!.add(doc);
+        } else if (tableType == '7-12 persons') {
+          groupedQueues['7-12 persons']!.add(doc);
+        }
+
+        print(
+            '👀 queueCode: ${data['queueCode']} | tableType: ${data['tableType']}');
+      }
+
       tableQueues = [
         {
           'type': 'Table type A : 1 - 2 persons',
-          'queueNow': '#A097',
-          'queueNext': '#A098',
-          'seatNow': '2',
-          'seatNext': '1',
+          'queueNow': groupedQueues['1-2 persons']!.isNotEmpty
+              ? groupedQueues['1-2 persons']![0]['queueCode']
+              : '-',
+          'queueNext': groupedQueues['1-2 persons']!.length > 1
+              ? groupedQueues['1-2 persons']![1]['queueCode']
+              : '-',
+          'seatNow': groupedQueues['1-2 persons']!.isNotEmpty
+              ? groupedQueues['1-2 persons']![0]['numberOfPersons'].toString()
+              : '-',
+          'seatNext': groupedQueues['1-2 persons']!.length > 1
+              ? groupedQueues['1-2 persons']![1]['numberOfPersons'].toString()
+              : '-',
         },
         {
           'type': 'Table type B : 3 - 6 persons',
-          'queueNow': '#B032',
-          'queueNext': '#B033',
-          'seatNow': '3',
-          'seatNext': '6',
+          'queueNow': groupedQueues['3-6 persons']!.isNotEmpty
+              ? groupedQueues['3-6 persons']![0]['queueCode']
+              : '-',
+          'queueNext': groupedQueues['3-6 persons']!.length > 1
+              ? groupedQueues['3-6 persons']![1]['queueCode']
+              : '-',
+          'seatNow': groupedQueues['3-6 persons']!.isNotEmpty
+              ? groupedQueues['3-6 persons']![0]['numberOfPersons'].toString()
+              : '-',
+          'seatNext': groupedQueues['3-6 persons']!.length > 1
+              ? groupedQueues['3-6 persons']![1]['numberOfPersons'].toString()
+              : '-',
         },
         {
           'type': 'Table type C : 7 - 12 persons',
-          'queueNow': '#C027',
-          'queueNext': '#C028',
-          'seatNow': '9',
-          'seatNext': '11',
+          'queueNow': groupedQueues['7-12 persons']!.isNotEmpty
+              ? groupedQueues['7-12 persons']![0]['queueCode']
+              : '-',
+          'queueNext': groupedQueues['7-12 persons']!.length > 1
+              ? groupedQueues['7-12 persons']![1]['queueCode']
+              : '-',
+          'seatNow': groupedQueues['7-12 persons']!.isNotEmpty
+              ? groupedQueues['7-12 persons']![0]['numberOfPersons'].toString()
+              : '-',
+          'seatNext': groupedQueues['7-12 persons']!.length > 1
+              ? groupedQueues['7-12 persons']![1]['numberOfPersons'].toString()
+              : '-',
         },
       ];
+    } catch (e) {
+      print("🔥 Error fetching queues: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error loading queue: $e")),
+      );
     } finally {
       setState(() {
         isLoading = false;
@@ -310,170 +316,273 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Update queue after passing or advancing
-  Future<void> _updateQueue(int index, bool isNext) async {
-    try {
-      // Get restaurant ID
-      String? restaurantId = widget.restaurantData?['restaurantId'];
-      if (restaurantId == null) return;
-      
-      // Get queue data
-      var currentQueue = tableQueues[index];
-      
-      // Update the queue numbers
-      Map<String, dynamic> updatedQueue = Map.from(currentQueue);
-      
-      if (isNext) {
-        // Advance to next queue
-        String currentQueueNum = currentQueue['queueNow'];
-        String nextQueueNum = currentQueue['queueNext'];
-        
-        // Extract the letter prefix and number
-        String prefix = currentQueueNum.substring(0, 2);
-        int nextNumber = int.parse(nextQueueNum.substring(2)) + 1;
-        
-        // Update the queues
-        updatedQueue['queueNow'] = nextQueueNum;
-        updatedQueue['queueNext'] = '$prefix${nextNumber.toString().padLeft(3, '0')}';
-        updatedQueue['seatNow'] = currentQueue['seatNext'];
-        updatedQueue['seatNext'] = (1 + Random().nextInt(12)).toString(); // Random for demo
-      } else {
-        // Pass the current queue
-        String nextQueueNum = currentQueue['queueNext'];
-        
-        // Extract the letter prefix and number
-        String prefix = nextQueueNum.substring(0, 2);
-        int currentNumber = int.parse(currentQueue['queueNow'].substring(2));
-        int nextNumber = int.parse(nextQueueNum.substring(2)) + 1;
-        
-        // Update the queues
-        updatedQueue['queueNow'] = nextQueueNum;
-        updatedQueue['queueNext'] = '$prefix${nextNumber.toString().padLeft(3, '0')}';
-        updatedQueue['seatNow'] = currentQueue['seatNext'];
-        updatedQueue['seatNext'] = (1 + Random().nextInt(12)).toString(); // Random for demo
-      }
-      
-      // Update in Firestore
-      QuerySnapshot tableSnapshot = await FirebaseFirestore.instance
-          .collection('restaurants')
-          .doc(restaurantId)
-          .collection('tables')
-          .where('type', isEqualTo: currentQueue['type'])
-          .get();
-          
-      if (tableSnapshot.docs.isNotEmpty) {
-        await tableSnapshot.docs.first.reference.update(updatedQueue);
-      }
-      
-      // Update local state
-      setState(() {
-        tableQueues[index] = updatedQueue;
-      });
-      
-    } catch (e) {
-      print('Error updating queue: $e');
+  // แก้ไขฟังก์ชัน _updateQueue ในคลาส _HomeScreenState
+// แก้ไขฟังก์ชัน _updateQueue ในคลาส _HomeScreenState
+Future<void> _updateQueue(int index, bool isNext) async {
+  try {
+    String? restaurantId = widget.restaurantData?['restaurantId'];
+    if (restaurantId == null) return;
+
+    // Determine table type based on index
+    String tableType = '';
+    if (index == 0) tableType = '1-2 persons';
+    if (index == 1) tableType = '3-6 persons';
+    if (index == 2) tableType = '7-12 persons';
+
+    // Check if there is a queue in the display table
+    if (tableQueues[index]['queueNow'] == '-') {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating queue: $e')),
+        const SnackBar(content: Text("ไม่มีคิวที่รออยู่ในประเภทโต๊ะนี้")),
       );
+      return; // Exit the function if there is no queue
     }
+
+    // Save current and next queue information before updating
+    final currentQueueCode = tableQueues[index]['queueNow'];
+    final nextQueueCode = tableQueues[index]['queueNext'];
+    final nextQueueSeat = tableQueues[index]['seatNext'];
+    
+    // Show processing message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("กำลัง${isNext ? 'ให้บริการเสร็จสิ้น' : 'ข้าม'}คิว $currentQueueCode"),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+    
+    // Update UI immediately
+    setState(() {
+      // Move next queue to current
+      tableQueues[index]['queueNow'] = nextQueueCode;
+      tableQueues[index]['seatNow'] = nextQueueSeat;
+      
+      // Set next queue to empty
+      tableQueues[index]['queueNext'] = '-';
+      tableQueues[index]['seatNext'] = '-';
+    });
+    
+    // Find the queue to update
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('queues')
+        .where('restaurantId', isEqualTo: restaurantId)
+        .where('isReservation', isEqualTo: false)
+        .where('tableType', isEqualTo: tableType)
+        .where('queueCode', isEqualTo: currentQueueCode)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      DocumentSnapshot queueDoc = snapshot.docs[0];
+      String userId = queueDoc['userId'] ?? '';
+      
+      // Update queue status instead of deleting
+      await FirebaseFirestore.instance
+          .collection('queues')
+          .doc(queueDoc.id)
+          .update({
+            'status': isNext ? 'completed' : 'skipped',
+            'completedAt': Timestamp.now(),
+          });
+          
+      print('✅ คิว $currentQueueCode ถูกอัปเดตเป็น ${isNext ? "completed" : "skipped"}');
+      
+      // Update user's queue status if userId exists
+      if (userId.isNotEmpty) {
+        QuerySnapshot userQueueSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('myQueue')
+            .where('queueCode', isEqualTo: currentQueueCode)
+            .get();
+            
+        for (var doc in userQueueSnapshot.docs) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('myQueue')
+              .doc(doc.id)
+              .update({
+                'status': isNext ? 'completed' : 'skipped',
+                'completedAt': Timestamp.now(),
+              });
+        }
+        
+        // Add 2 coins to user if service is completed (isNext = true)
+        if (isNext && userId.isNotEmpty) {
+          try {
+            // Check if user has a coins field
+            DocumentSnapshot userDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .get();
+                
+            if (userDoc.exists) {
+              Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+              
+              // If coins field exists, increment by 2
+              if (userData.containsKey('coins')) {
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(userId)
+                    .update({'coins': FieldValue.increment(2)});
+              } else {
+                // If coins field doesn't exist, create it with initial value 12 (10 default + 2 reward)
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(userId)
+                    .update({'coins': 12});
+              }
+              
+              print('✅ Added 2 coins to user $userId successfully');
+              
+              // Create reward history record
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(userId)
+                  .collection('rewardHistory')
+                  .add({
+                    'title': 'Service Completion Reward',
+                    'coins': '+2 coins',
+                    'rewardId': 'SVC-${currentQueueCode}',
+                    'redeemedAt': Timestamp.now(),
+                    'status': 'confirmed',
+                    'confirmedAt': Timestamp.now(),
+                    'confirmedBy': restaurantId,
+                    'description': 'Reward for completing service at $currentQueueCode'
+                  });
+                  
+              // Optionally, send notification to user about receiving coins
+              // This would require implementing a notification system
+            }
+          } catch (e) {
+            print('❌ Error adding coins to user: $e');
+          }
+        }
+      }
+    }
+    
+    // Show completion message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("${isNext ? 'ให้บริการเสร็จสิ้น' : 'ข้าม'}คิว $currentQueueCode แล้ว"),
+      ),
+    );
+    
+    // Refresh data from Firestore for accuracy
+    // Small delay to let the user see the change
+    await Future.delayed(const Duration(milliseconds: 300));
+    await fetchWalkInQueues();
+    
+  } catch (e) {
+    print('Error updating queue: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('เกิดข้อผิดพลาดในการอัปเดตคิว: $e')),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: isLoading 
-        ? const Center(child: CircularProgressIndicator(color: Color(0xFF8B2323)))
-        : Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Restaurant Info Section
-                if (widget.restaurantData != null) ...[
-                  Row(
-                    children: [
-                      // Restaurant Image
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey[200],
-                          image: widget.restaurantData!['restaurantImage'] != null
-                            ? DecorationImage(
-                                image: MemoryImage(
-                                  base64Decode(widget.restaurantData!['restaurantImage']),
+      body: isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF8B2323)))
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Restaurant Info Section
+                  if (widget.restaurantData != null) ...[
+                    Row(
+                      children: [
+                        // Restaurant Image
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.grey[200],
+                            image: widget.restaurantData!['restaurantImage'] !=
+                                    null
+                                ? DecorationImage(
+                                    image: MemoryImage(
+                                      base64Decode(widget
+                                          .restaurantData!['restaurantImage']),
+                                    ),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child:
+                              widget.restaurantData!['restaurantImage'] == null
+                                  ? const Icon(Icons.restaurant,
+                                      color: Colors.grey, size: 30)
+                                  : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.restaurantData!['name'] ??
+                                    'Your Restaurant',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                        ),
-                        child: widget.restaurantData!['restaurantImage'] == null
-                          ? const Icon(Icons.restaurant, color: Colors.grey, size: 30)
-                          : null,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.restaurantData!['name'] ?? 'Your Restaurant',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '📍 ${widget.restaurantData!['location'] ?? 'No location'}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
+                              const SizedBox(height: 4),
+                              Text(
+                                '${widget.restaurantData!['location'] ?? 'No location'}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                ],
-                
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: EdgeInsets.only(left: 8.0, bottom: 8.0),
-                    child: Text(
-                      'Queue',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 8.0, bottom: 8.0),
+                      child: Text(
+                        'Queue',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                
-                // Table Queue Cards
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: tableQueues.length,
-                    itemBuilder: (context, index) {
-                      final queue = tableQueues[index];
-                      return buildTableCard(
-                        index: index,
-                        title: queue['type'],
-                        queueNow: queue['queueNow'],
-                        queueNext: queue['queueNext'],
-                        seatNow: queue['seatNow'],
-                        seatNext: queue['seatNext'],
-                      );
-                    },
+
+                  // Table Queue Cards
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: tableQueues.length,
+                      itemBuilder: (context, index) {
+                        final queue = tableQueues[index];
+                        return buildTableCard(
+                          index: index,
+                          title: queue['type'],
+                          queueNow: queue['queueNow'],
+                          queueNext: queue['queueNext'],
+                          seatNow: queue['seatNow'],
+                          seatNext: queue['seatNext'],
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
     );
   }
 
@@ -519,13 +628,13 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 navigationButton(
-                  icon: Icons.arrow_back, 
-                  label: 'Pass Queue',
+                  icon: Icons.arrow_back,
+                  label: 'ข้ามคิว',
                   onPressed: () => _updateQueue(index, false),
                 ),
                 navigationButton(
-                  icon: Icons.arrow_forward, 
-                  label: 'Next Queue',
+                  icon: Icons.arrow_forward,
+                  label: 'ให้บริการเสร็จ',
                   onPressed: () => _updateQueue(index, true),
                 ),
               ],
@@ -551,7 +660,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget navigationButton({
-    required IconData icon, 
+    required IconData icon,
     required String label,
     required VoidCallback onPressed,
   }) {
@@ -575,7 +684,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class ReservationScreen extends StatefulWidget {
   final Map<String, dynamic>? restaurantData;
-  
+
   const ReservationScreen({Key? key, this.restaurantData}) : super(key: key);
 
   @override
@@ -583,115 +692,277 @@ class ReservationScreen extends StatefulWidget {
 }
 
 class _ReservationScreenState extends State<ReservationScreen> {
-  List<Map<String, String>> reservations = [];
-  List<Map<String, String>> upcomingReservations = [
-    {'id': '#R025', 'seat': '2', 'time': '12:30', 'status': '-'},
-    {'id': '#R026', 'seat': '4', 'time': '18:20', 'status': '-'},
-    {'id': '#R027', 'seat': '4', 'time': '19:45', 'status': '-'},
-    {'id': '#R028', 'seat': '6', 'time': '20:35', 'status': '-'},
-    {'id': '#R029', 'seat': '6', 'time': '20:35', 'status': '-'},
-    {'id': '#R030', 'seat': '6', 'time': '20:35', 'status': '-'},
-  ];
-
-  void markAsComplete(int index) {
-    setState(() {
-      // เปลี่ยนสถานะคิวที่เลือกจาก upcoming เป็น 'complete'
-      upcomingReservations[index]['status'] = 'complete';
-
-      // นำคิวที่กด complete ไปอยู่ใน reservation
-      reservations.add(upcomingReservations[index]);
-
-      // ถ้ามีคิวใน reservation มากกว่า 2 คิว ให้ลบคิวแรกสุดออก
-      if (reservations.length > 2) {
-        reservations.removeAt(0); // ลบคิวที่อยู่ในตำแหน่งแรก
-      }
-
-      // ลบคิวที่ถูกกด complete จาก upcomingReservations
-      upcomingReservations.removeAt(index);
-    });
-  }
+  bool isLoading = true;
+  List<Map<String, dynamic>> reservations = [];
+  List<Map<String, dynamic>> upcomingReservations = [];
+  final NotificationService _notificationService = NotificationService();
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
+  void initState() {
+    super.initState();
+    if (widget.restaurantData != null) {
+      fetchReservations();
+    }
+  }
+
+  Future<void> fetchReservations() async {
+  try {
+    setState(() => isLoading = true);
+
+    final restaurantId = widget.restaurantData?['restaurantId'];
+    if (restaurantId == null) return;
+
+    // ดึงคิวประเภท reservation ทั้งหมด
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('queues')
+        .where('restaurantId', isEqualTo: restaurantId)
+        .where('isReservation', isEqualTo: true)
+        .get();
+
+    upcomingReservations = [];
+    reservations = [];
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+
+      final item = {
+        'id': data['queueCode'] ?? '',
+        'seat': data['numberOfPersons'].toString(),
+        'time': data['bookingTime'] != null
+            ? (data['bookingTime'] as Timestamp)
+                .toDate()
+                .toString()
+                .substring(11, 16)
+            : '-',
+        'status': data['status'] ?? 'waiting',
+        'docId': doc.id,
+        'completedAt': data['completedAt'], // เพิ่มเวลาที่เสร็จสิ้น
+        'timestamp': data['timestamp'], // เพิ่มการเก็บ timestamp เพื่อใช้ในการเรียงลำดับ
+      };
+
+      if (data['status'] == 'completed') {
+        reservations.add(item);
+      } else {
+        upcomingReservations.add(item);
+      }
+    }
+
+    // เรียงลำดับ upcomingReservations ตาม timestamp (เก่าสุดอยู่บนสุด)
+    upcomingReservations.sort((a, b) {
+      var aTime = a['timestamp'] is Timestamp ? 
+          (a['timestamp'] as Timestamp).millisecondsSinceEpoch : 0;
+      var bTime = b['timestamp'] is Timestamp ? 
+          (b['timestamp'] as Timestamp).millisecondsSinceEpoch : 0;
+      return aTime.compareTo(bTime); // เรียงจากน้อยไปมาก (เก่าสุดอยู่บนสุด)
+    });
+
+    // เรียงลำดับรายการ completed ตามเวลาที่เสร็จสิ้น (ล่าสุดอยู่ก่อน)
+    reservations.sort((a, b) {
+      var aTime = a['completedAt'] is Timestamp ? 
+          (a['completedAt'] as Timestamp).millisecondsSinceEpoch : 0;
+      var bTime = b['completedAt'] is Timestamp ? 
+          (b['completedAt'] as Timestamp).millisecondsSinceEpoch : 0;
+      return bTime.compareTo(aTime); // เรียงจากมากไปน้อย
+    });
+
+    // จำกัดให้มีเพียง 3 รายการเท่านั้น
+    if (reservations.length > 3) {
+      reservations = reservations.sublist(0, 3);
+    }
+
+    setState(() {});
+  } catch (e) {
+    print("🔥 Error loading reservations: $e");
+  } finally {
+    setState(() => isLoading = false);
+  }
+}
+
+
+
+Future<String?> getUserIdForQueue(String queueCode, String? restaurantId) async {
+  try {
+    // พยายามค้นหา userId จากคอลเลกชั่น queues อีกครั้ง
+    final querySnapshot = await FirebaseFirestore.instance
+      .collection('queues')
+      .where('queueCode', isEqualTo: queueCode)
+      .where('restaurantId', isEqualTo: restaurantId)
+      .get();
+      
+    if (querySnapshot.docs.isNotEmpty) {
+      final data = querySnapshot.docs[0].data();
+      if (data['userId'] != null && data['userId'].toString().isNotEmpty) {
+        return data['userId'];
+      }
+    }
     
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    // ถ้ายังไม่พบ ลองค้นหาใน users/*/myQueue
+    final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
+    
+    for (var userDoc in usersSnapshot.docs) {
+      final myQueueSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userDoc.id)
+        .collection('myQueue')
+        .where('queueCode', isEqualTo: queueCode)
+        .get();
+        
+      if (myQueueSnapshot.docs.isNotEmpty) {
+        return userDoc.id; // ถ้าพบคิวนี้ใน myQueue ของผู้ใช้ใด ให้ใช้ ID ของผู้ใช้นั้น
+      }
+    }
+    
+    return null; // ถ้าไม่พบ userId ทั้งสองวิธี
+  } catch (error) {
+    print('Error finding userId: $error');
+    return null;
+  }
+}
+
+
+ void markAsComplete(int index) async {
+  final completedRes = upcomingReservations[index];
+
+  // ดึง docId เพื่อใช้ลบออกจาก Firestore
+  final docId = completedRes['docId'];
+
+  try {
+    // อัปเดตสถานะเป็น completed ก่อนลบ (ถ้าต้องการ)
+    await FirebaseFirestore.instance
+        .collection('advanceBookings')
+        .doc(docId)
+        .update({'status': 'completed'});
+
+    // ลบจาก Firestore ถ้าไม่ต้องการเก็บ
+    // await FirebaseFirestore.instance.collection('advanceBookings').doc(docId).delete();
+
+    setState(() {
+      // 1️⃣ ใส่ไว้ที่ท้ายของ reservation
+      completedRes['status'] = 'completed';
+      reservations.add(completedRes);
+
+      // 2️⃣ ถ้ามีเกิน 3 อัน → ลบตัวแรกสุดออก
+      if (reservations.length > 3) {
+        reservations.removeAt(0);
+      }
+
+      // 3️⃣ ลบจาก upcoming
+      upcomingReservations.removeAt(index);
+    });
+
+    print('✅ Reservation moved to completed list.');
+  } catch (e) {
+    print('❌ Error completing reservation: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error completing reservation: $e")),
+    );
+  }
+}
+
+
+  @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Colors.white,
+    body: isLoading
+        ? const Center(
+            child: CircularProgressIndicator(color: Color(0xFF8B2323)))
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(40.0),
-                  child: Image.asset(
-                    'assets/images/famtime.jpeg',
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // 🏪 ร้านอาหาร ( รูป ชื่อ ที่อยู่ )
+                Row(
                   children: [
-                    Text(
-                      'Fam Time',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                    // แก้ไขส่วนนี้เพื่อใช้รูปภาพจาก database
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey[200],
+                        image: widget.restaurantData?['restaurantImage'] != null
+                            ? DecorationImage(
+                                image: MemoryImage(
+                                  base64Decode(widget.restaurantData!['restaurantImage']),
+                                ),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
+                      child: widget.restaurantData?['restaurantImage'] == null
+                          ? const Icon(Icons.restaurant, color: Colors.grey, size: 25)
+                          : null,
                     ),
-                    Text('📍 Siam Square Soi 4',
-                        style: TextStyle(color: Colors.black)),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.restaurantData?['name'] ?? 'Your Restaurant',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Text(
+                          '📍 ${widget.restaurantData?['location'] ?? 'Unknown location'}',
+                          style: const TextStyle(color: Colors.black),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
+                const SizedBox(height: 16),
+                  const Text(
+                    'Reservation',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
 
-            const Text(
-              'Reservation',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  // ✅ จองสำเร็จแล้ว (completed) สูงสุด 3 card
+                  if (reservations.isNotEmpty)
+                    ...reservations
+                        .take(3)
+                        .map((res) => buildReservationCard(
+                              res,
+                              reservations.indexOf(res),
+                            ))
+                        .toList()
+                  else
+                    const Center(
+                      child: Text(
+                        "No reservations have been completed yet.",
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  if (upcomingReservations.isNotEmpty) ...[
+                    const Text(
+                      'Upcoming',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: upcomingReservations.length,
+                      itemBuilder: (context, index) {
+                        return buildUpcomingCard(
+                            upcomingReservations[index], index);
+                      },
+                    ),
+                  ],
+                ],
+              ),
             ),
-            const SizedBox(height: 10),
-            // Show reservations (only 2 reservations are displayed)
-            if (reservations.isNotEmpty)
-              ...reservations
-                  .map((reservation) => buildReservationCard(
-                      reservation, reservations.indexOf(reservation)))
-                  .toList(),
-            if (reservations.isEmpty)
-              const Center(
-                  child: Text("No reservations have been completed yet.",
-                      style: TextStyle(fontSize: 16, color: Colors.grey))),
-            const SizedBox(height: 20),
-
-            if (upcomingReservations.isNotEmpty) ...[
-              const Text(
-                'Upcoming',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: upcomingReservations.length,
-                  itemBuilder: (context, index) {
-                    return buildUpcomingCard(
-                        upcomingReservations[index], index);
-                  },
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 
-  Widget buildReservationCard(Map<String, String> res, int index) {
+  Widget buildReservationCard(Map<String, dynamic> res, int index) {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
@@ -723,13 +994,31 @@ class _ReservationScreenState extends State<ReservationScreen> {
             Column(
               children: [
                 ElevatedButton(
-                  onPressed: res['status'] == 'complete'
+                  onPressed: res['status'] == 'completed'
                       ? null
-                      : () {
-                          setState(() {
-                            res['status'] = 'complete';
-                          });
-                          markAsComplete(index);
+                      : () async {
+                          try {
+                            final docId =
+                                res['docId']; // ต้องแน่ใจว่ามี key นี้
+                            await FirebaseFirestore.instance
+                                .collection('queues')
+                                .doc(docId)
+                                .delete();
+
+                            setState(() {
+                              upcomingReservations
+                                  .removeAt(index); // หรือ .removeWhere(...)
+                            });
+
+                            print('✅ Deleted reservation $docId');
+                          } catch (e) {
+                            print('❌ Error deleting reservation: $e');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content:
+                                      Text("Error deleting reservation: $e")),
+                            );
+                          }
                         },
                   child: Icon(
                     Icons.check,
@@ -764,7 +1053,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
     );
   }
 
-  Widget buildUpcomingCard(Map<String, String> res, int index) {
+  
+
+  Widget buildUpcomingCard(Map<String, dynamic> res, int index) {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
@@ -776,70 +1067,121 @@ class _ReservationScreenState extends State<ReservationScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
-            // ข้อมูลคิว
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    res['id']!,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text(res['id']),
                   Text("Seat : ${res['seat']}"),
                   Text("Booked Time : ${res['time']}"),
                   Text("Status : ${res['status']}"),
                 ],
               ),
             ),
-            // ส่วนปุ่ม Complete และ Delete
             Column(
               children: [
-                // ปุ่ม Complete ที่ไม่สามารถกดได้ถ้าคิวอยู่ใน Reservation
-                GestureDetector(
-                  onTap: res['status'] == 'complete'
-                      ? null // ไม่ให้กดเมื่อสถานะเป็น 'complete'
-                      : () {
-                          setState(() {
-                            res['status'] = 'complete';
-                          });
-                          markAsComplete(index);
-                        },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeInOut,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: res['status'] == 'complete'
-                          ? Colors.green
-                          : Colors.grey[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'Complete',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                    height: 10), // ระยะห่างระหว่างปุ่ม Complete และ Delete
-                // ปุ่ม Delete ที่สามารถกดได้
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
+                ElevatedButton(
                   onPressed: () {
-                    setState(() {
-                      // ลบคิวใน upcoming
-                      upcomingReservations.removeAt(index);
-                    });
+                    markCompletedFromUpcoming(index);
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                  ),
+                  child: const Text("Complete"),
                 ),
+                const SizedBox(height: 8),
+                IconButton(
+  icon: const Icon(Icons.delete, color: Colors.red),
+  onPressed: () async {
+    try {
+      // แสดง loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF8B2323)),
+        ),
+      );
+      
+      final docId = upcomingReservations[index]['docId'];
+      final userId = upcomingReservations[index]['userId'];
+      final queueCode = upcomingReservations[index]['id'];
+      
+      // ลบคิวจาก collection queues
+      await FirebaseFirestore.instance
+          .collection('queues')
+          .doc(docId)
+          .update({
+            'status': 'cancelled',
+            'cancelledAt': Timestamp.now(),
+            'cancelledBy': 'restaurant',
+          });
+          
+      // อัปเดทข้อมูลใน myQueue ของผู้ใช้
+      if (userId != null) {
+        // ค้นหาเอกสารใน myQueue ของผู้ใช้
+        QuerySnapshot userQueueSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('myQueue')
+            .where('queueCode', isEqualTo: queueCode)
+            .get();
+
+        // ถ้ามีข้อมูล ให้อัพเดทสถานะทุกเอกสารที่พบ
+        if (userQueueSnapshot.docs.isNotEmpty) {
+          for (var doc in userQueueSnapshot.docs) {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .collection('myQueue')
+                .doc(doc.id)
+                .update({
+                  'status': 'cancelled',
+                  'cancelledAt': Timestamp.now(),
+                  'notificationMessage': 'คิวของคุณถูกทางร้านยกเลิก',
+                  'notificationSent': true,
+                });
+                
+            print('✅ อัพเดทสถานะคิว $queueCode เป็น cancelled ในฝั่ง user แล้ว');
+          }
+        } else {
+          print('⚠️ ไม่พบข้อมูลคิว $queueCode ใน myQueue ของผู้ใช้');
+        }
+        
+        // ส่งการแจ้งเตือน
+        try {
+          await _notificationService.showNotification(
+            id: queueCode.hashCode,
+            title: 'การจองของคุณถูกยกเลิก',
+            body: 'คิวของคุณถูกทางร้านยกเลิก',
+            payload: 'reservation_cancelled:$queueCode',
+          );
+        } catch (notificationError) {
+          print('❌ Error sending notification: $notificationError');
+        }
+      }
+
+      // ปิด loading indicator
+      Navigator.of(context, rootNavigator: true).pop();
+
+      setState(() {
+        upcomingReservations.removeAt(index);
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Reservation cancelled successfully")),
+      );
+    } catch (e) {
+      // ปิด loading indicator ในกรณีเกิดข้อผิดพลาด
+      Navigator.of(context, rootNavigator: true).pop();
+      
+      print('❌ Error deleting reservation: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error cancelling reservation: $e")),
+      );
+    }
+  },
+)
               ],
             ),
           ],
@@ -847,11 +1189,279 @@ class _ReservationScreenState extends State<ReservationScreen> {
       ),
     );
   }
+
+  
+
+  void markCompletedFromUpcoming(int index) async {
+  if (index >= 0 && index < upcomingReservations.length) {
+    final completedItem = upcomingReservations[index];
+    final docId = completedItem['docId'];
+    var userId = completedItem['userId']; // อาจเป็น null หรือค่าว่าง
+    final queueCode = completedItem['id']; // รหัสคิว
+
+    try {
+      // แสดง loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF8B2323)),
+        ),
+      );
+      
+      // ถ้าไม่มี userId ให้พยายามค้นหาอีกครั้ง
+      if (userId == null || userId.toString().isEmpty) {
+        print('⚠️ ไม่พบ userId สำหรับคิว $queueCode พยายามค้นหาเพิ่มเติม...');
+        final restaurantId = widget.restaurantData?['restaurantId'];
+        userId = await getUserIdForQueue(queueCode, restaurantId);
+        
+        if (userId != null) {
+          print('✅ พบ userId: $userId สำหรับคิว $queueCode จากการค้นหาเพิ่มเติม');
+          
+          // อัปเดต userId ในเอกสารคิวด้วย เพื่อให้ครั้งต่อไปไม่ต้องค้นหาอีก
+          await FirebaseFirestore.instance
+              .collection('queues')
+              .doc(docId)
+              .update({'userId': userId});
+        } else {
+          print('❌ ไม่พบ userId สำหรับคิว $queueCode แม้จะค้นหาเพิ่มเติมแล้ว');
+        }
+      }
+      
+      // บันทึกเวลาที่ทำรายการเสร็จ
+      final Timestamp completionTime = Timestamp.now();
+      
+      // อัปเดตสถานะใน Firestore - collection queues
+      await FirebaseFirestore.instance
+          .collection('queues')
+          .doc(docId)
+          .update({
+            'status': 'completed',
+            'completedAt': completionTime,
+            'notificationSent': true,
+            'completedBy': widget.restaurantData?['restaurantId'] ?? 'unknown',
+          });
+
+      // ถ้ามี userId (หลังจากค้นหาเพิ่มเติมแล้ว) ให้อัปเดทข้อมูลและเพิ่ม coins
+      if (userId != null && userId.toString().isNotEmpty) {
+        try {
+          // ค้นหาเอกสารใน myQueue ของผู้ใช้
+          QuerySnapshot userQueueSnapshot = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('myQueue')
+              .where('queueCode', isEqualTo: queueCode)
+              .get();
+
+          // ถ้ามีข้อมูล ให้อัพเดทสถานะทุกเอกสารที่พบ
+          if (userQueueSnapshot.docs.isNotEmpty) {
+            for (var doc in userQueueSnapshot.docs) {
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(userId)
+                  .collection('myQueue')
+                  .doc(doc.id)
+                  .update({
+                    'status': 'completed',
+                    'completedAt': completionTime,
+                    'notificationMessage': 'คุณได้รับบริการเรียบร้อยแล้ว และได้รับ 2 coins!',
+                    'notificationSent': true,
+                  });
+                  
+              print('✅ อัพเดทสถานะคิว $queueCode เป็น completed ในฝั่ง user แล้ว');
+            }
+          } else {
+            print('⚠️ ไม่พบข้อมูลคิว $queueCode ใน myQueue ของผู้ใช้ - พยายามสร้างรายการใหม่');
+            
+            // สร้างรายการใน myQueue หากไม่มี
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .collection('myQueue')
+                .add({
+                  'queueCode': queueCode,
+                  'status': 'completed',
+                  'completedAt': completionTime,
+                  'timestamp': completionTime,
+                  'restaurantId': widget.restaurantData?['restaurantId'],
+                  'restaurantName': widget.restaurantData?['name'] ?? 'Restaurant',
+                  'notificationMessage': 'คุณได้รับบริการเรียบร้อยแล้ว และได้รับ 2 coins!',
+                  'notificationSent': true,
+                });
+                
+            print('✅ สร้างรายการคิวใหม่ใน myQueue ของผู้ใช้ $userId สำเร็จ');
+          }
+
+          // เพิ่ม 2 coins ให้ผู้ใช้
+          try {
+            // ตรวจสอบว่าผู้ใช้มีฟิลด์ coins หรือไม่
+            DocumentSnapshot userDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .get();
+                
+            if (userDoc.exists) {
+              Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+              
+              // ถ้ามีฟิลด์ coins แล้ว ให้เพิ่ม 2
+              if (userData.containsKey('coins')) {
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(userId)
+                    .update({'coins': FieldValue.increment(2)});
+                print('✅ เพิ่ม coins จำนวน 2 ให้ผู้ใช้ $userId (มี ${userData['coins']} coins ก่อนหน้านี้)');
+              } else {
+                // ถ้ายังไม่มีฟิลด์ coins ให้สร้างและให้ค่าเริ่มต้นที่ 12 (10 เริ่มต้น + 2 รางวัล)
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(userId)
+                    .update({'coins': 12});
+                print('✅ สร้างฟิลด์ coins และตั้งค่าเป็น 12 (10+2) สำหรับผู้ใช้ $userId');
+              }
+              
+              // สร้างประวัติการได้รับ coins ในคอลเลกชัน rewardHistory
+              String? restaurantId = widget.restaurantData?['restaurantId'];
+              String restaurantName = widget.restaurantData?['name'] ?? 'Restaurant';
+              
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(userId)
+                  .collection('rewardHistory')
+                  .add({
+                    'title': 'Reservation Completion Reward',
+                    'coins': '+2 coins',
+                    'rewardId': 'RSV-${queueCode}',
+                    'redeemedAt': completionTime,
+                    'status': 'confirmed',  // ตั้งค่าเป็น confirmed ทันที เนื่องจากทางร้านเป็นคนให้
+                    'confirmedAt': completionTime,
+                    'confirmedBy': restaurantId,
+                    'description': 'Reward for completing reservation at $restaurantName (Queue: $queueCode)'
+                  });
+              
+              print('✅ สร้างประวัติ reward สำหรับผู้ใช้ $userId สำเร็จ');
+              
+              // ส่งการแจ้งเตือน
+              try {
+                await _notificationService.showNotification(
+                  id: queueCode.hashCode,
+                  title: 'การจองของคุณสำเร็จแล้ว',
+                  body: 'คุณได้รับบริการเรียบร้อยแล้ว และได้รับ 2 coins!',
+                  payload: 'reservation_completed:$queueCode',
+                );
+              } catch (notificationError) {
+                print('❌ Error sending notification: $notificationError');
+              }
+            } else {
+              print('⚠️ ไม่พบข้อมูลผู้ใช้ $userId - พยายามสร้างผู้ใช้ใหม่');
+              
+              // สร้างผู้ใช้ใหม่หากไม่มี
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(userId)
+                  .set({
+                    'coins': 12,  // เริ่มต้นด้วย 10+2 coins
+                    'createdAt': completionTime,
+                    'lastUpdated': completionTime,
+                  });
+                  
+              // สร้างประวัติการได้รับ coins
+              String? restaurantId = widget.restaurantData?['restaurantId'];
+              String restaurantName = widget.restaurantData?['name'] ?? 'Restaurant';
+              
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(userId)
+                  .collection('rewardHistory')
+                  .add({
+                    'title': 'Reservation Completion Reward',
+                    'coins': '+2 coins',
+                    'rewardId': 'RSV-${queueCode}',
+                    'redeemedAt': completionTime,
+                    'status': 'confirmed',
+                    'confirmedAt': completionTime,
+                    'confirmedBy': restaurantId,
+                    'description': 'Reward for completing reservation at $restaurantName (Queue: $queueCode)'
+                  });
+                  
+              print('✅ สร้างผู้ใช้ใหม่พร้อมกับ coins และประวัติรางวัลสำเร็จ');
+            }
+          } catch (e) {
+            print('❌ Error adding coins to user: $e');
+          }
+        } catch (userUpdateError) {
+          print('❌ Error updating user data: $userUpdateError');
+        }
+      } else {
+        print('⚠️ ไม่สามารถค้นหา userId สำหรับคิว $queueCode ได้ ไม่สามารถเพิ่ม coins ได้');
+        
+        // แสดงข้อความแจ้งเตือนให้ผู้ใช้งานทราบ
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("ไม่พบข้อมูลผู้ใช้สำหรับคิวนี้ ไม่สามารถเพิ่ม coins ได้"),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // ปิด loading indicator
+      Navigator.of(context, rootNavigator: true).pop();
+
+      setState(() {
+        // อัปเดตใน local state
+        completedItem['status'] = 'completed';
+        completedItem['completedAt'] = completionTime;
+        
+        // เพิ่มรายการใหม่ที่ตำแหน่งแรกของ reservations (ล่าสุดอยู่บนสุด)
+        reservations.insert(0, completedItem);
+        
+        // ถ้ามีมากกว่า 3 รายการ ให้ลบรายการสุดท้าย (เก่าสุด)
+        if (reservations.length > 3) {
+          reservations.removeLast();
+        }
+        
+        // ลบรายการจาก upcoming
+        upcomingReservations.removeAt(index);
+      });
+
+      // แสดงข้อความแจ้งเตือนตามสถานการณ์
+      if (userId != null && userId.toString().isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("ทำรายการสำเร็จ ผู้ใช้ได้รับ 2 coins แล้ว"),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("ทำรายการสำเร็จ แต่ไม่สามารถเพิ่ม coins ได้เนื่องจากไม่พบผู้ใช้"),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      // ปิด loading indicator ในกรณีเกิดข้อผิดพลาด
+      Navigator.of(context, rootNavigator: true).pop();
+      
+      print('❌ Error updating reservation: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("เกิดข้อผิดพลาด: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 }
+}
+
 
 class RewardScreen extends StatefulWidget {
   final Map<String, dynamic>? restaurantData;
-  
+
   const RewardScreen({Key? key, this.restaurantData}) : super(key: key);
 
   @override
@@ -860,25 +1470,89 @@ class RewardScreen extends StatefulWidget {
 
 class _RewardScreenState extends State<RewardScreen> {
   final TextEditingController _rewardNumberController = TextEditingController();
-  String _reward = '';
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isLoading = false;
+  Map<String, dynamic>? _rewardInfo;
+  bool _showSuccess = false;
 
-  
-void _submitReward() {
-    String rewardId = _rewardNumberController.text;
-    if (rewardId.isNotEmpty) {
-      // ส่งไปยัง Backend หรือเก็บข้อมูล
-      print("Reward ID: $rewardId"); // ตัวอย่างการแสดงข้อมูล
-      // ส่งข้อมูลไปยัง Backend เช่น ผ่าน API หรือ Firebase
-    } else {
-      // แจ้งเตือนเมื่อกรอกข้อมูลไม่ครบ
-      print("Please enter Reward ID.");
+  Future<void> _submitReward() async {
+    String rewardId = _rewardNumberController.text.trim();
+    if (rewardId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter Reward ID")),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _rewardInfo = null;
+      _showSuccess = false;
+    });
+
+    try {
+      // ค้นหา reward ใน rewardHistory ของผู้ใช้ทุกคน
+      QuerySnapshot userSnapshot = await _firestore.collection('users').get();
+      bool found = false;
+
+      for (var userDoc in userSnapshot.docs) {
+        QuerySnapshot rewardSnapshot = await _firestore
+            .collection('users')
+            .doc(userDoc.id)
+            .collection('rewardHistory')
+            .where('rewardId', isEqualTo: rewardId)
+            .where('status', isEqualTo: 'pending') // เฉพาะที่ยังรอการยืนยัน
+            .get();
+
+        if (rewardSnapshot.docs.isNotEmpty) {
+          // พบ reward ที่ตรงกัน
+          DocumentSnapshot rewardDoc = rewardSnapshot.docs.first;
+          Map<String, dynamic> rewardData = rewardDoc.data() as Map<String, dynamic>;
+
+          // อัพเดตสถานะเป็น confirmed
+          await _firestore
+              .collection('users')
+              .doc(userDoc.id)
+              .collection('rewardHistory')
+              .doc(rewardDoc.id)
+              .update({
+                'status': 'confirmed',
+                'confirmedAt': Timestamp.now(),
+                'confirmedBy': widget.restaurantData?['restaurantId'] ?? 'unknown'
+              });
+
+          // เก็บข้อมูลเพื่อแสดงผล
+          setState(() {
+            _rewardInfo = rewardData;
+            _showSuccess = true;
+          });
+
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Reward ID not found or already confirmed")),
+        );
+      }
+    } catch (e) {
+      print("Error submitting reward: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -889,28 +1563,33 @@ void _submitReward() {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 10),
+            
             // ช่องกรอกข้อมูล
             TextField(
               controller: _rewardNumberController,
               decoration: InputDecoration(
                 hintText: 'Enter Reward Number',
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                contentPadding:
-                    const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
                 filled: true,
                 fillColor: Colors.grey[100],
               ),
-              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 20),
+            
             // ปุ่ม Submit
             ElevatedButton(
-              onPressed: _submitReward,
-              child: const Text('Submit'),
+              onPressed: _isLoading ? null : _submitReward,
+              child: _isLoading 
+                ? const SizedBox(
+                    height: 20, 
+                    width: 20, 
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.0)
+                  )
+                : const Text('Submit'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B2323), // สีพื้นหลัง
-                foregroundColor: Colors.white, // สีข้อความในปุ่ม
+                backgroundColor: const Color(0xFF8B2323),
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -919,20 +1598,47 @@ void _submitReward() {
               ),
             ),
             const SizedBox(height: 20),
-            // แสดงรางวัล
-            if (_reward.isNotEmpty)
+            
+            // แสดงข้อมูลรางวัล
+            if (_rewardInfo != null)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green[100],
+                  color: _showSuccess ? Colors.green[100] : Colors.grey[100],
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text(
-                  'Reward Number: $_reward',
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _showSuccess 
+                          ? const Icon(Icons.check_circle, color: Colors.green, size: 24)
+                          : const Icon(Icons.info, color: Colors.blue, size: 24),
+                        const SizedBox(width: 10),
+                        Text(
+                          _showSuccess ? 'Reward Confirmed!' : 'Reward Information',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: _showSuccess ? Colors.green : Colors.blue,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text('Reward ID: ${_rewardInfo!['rewardId']}'),
+                    Text('Reward: ${_rewardInfo!['title']}'),
+                    Text('Redeemed: ${_formatDate(_rewardInfo!['redeemedAt'])}'),
+                    Text('Amount: ${_rewardInfo!['coins']}'),
+                    if (_showSuccess) ...[
+                      const SizedBox(height: 10),
+                      const Text(
+                        'This reward has been successfully confirmed.',
+                        style: TextStyle(color: Colors.green),
+                      ),
+                    ],
+                  ],
                 ),
               ),
           ],
@@ -940,18 +1646,31 @@ void _submitReward() {
       ),
     );
   }
+  
+  String _formatDate(dynamic timestamp) {
+    if (timestamp == null) return 'N/A';
+    
+    try {
+      if (timestamp is Timestamp) {
+        DateTime dateTime = timestamp.toDate();
+        return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute}';
+      }
+      return 'N/A';
+    } catch (e) {
+      return 'N/A';
+    }
+  }
 }
 
 class SettingScreen extends StatelessWidget {
   final Map<String, dynamic>? restaurantData;
-  
+
   const SettingScreen({Key? key, this.restaurantData}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      
       body: Container(
         color: Colors.white,
         child: SingleChildScrollView(
@@ -964,10 +1683,12 @@ class SettingScreen extends StatelessWidget {
                   radius: 50,
                   backgroundColor: Colors.grey[300],
                   backgroundImage: restaurantData!['restaurantImage'] != null
-                      ? MemoryImage(base64Decode(restaurantData!['restaurantImage']))
+                      ? MemoryImage(
+                          base64Decode(restaurantData!['restaurantImage']))
                       : null,
                   child: restaurantData!['restaurantImage'] == null
-                      ? const Icon(Icons.restaurant, size: 50, color: Colors.grey)
+                      ? const Icon(Icons.restaurant,
+                          size: 50, color: Colors.grey)
                       : null,
                 ),
                 const SizedBox(height: 12),
@@ -989,7 +1710,7 @@ class SettingScreen extends StatelessWidget {
                 const Divider(),
                 const SizedBox(height: 20),
               ],
-              
+
               buildSettingCard(
                 context,
                 icon: Icons.storefront,

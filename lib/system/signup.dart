@@ -43,6 +43,65 @@ class _SignUpPageState extends State<SignUpPage> {
     _formKey.currentState?.reset();
   }
 
+  // ฟังก์ชันสำหรับสร้างผู้ใช้ใหม่ใน Users collection และเพิ่ม coins เริ่มต้น
+  Future<void> _createUserWithCoins(String uid, Map<String, dynamic> userData) async {
+    try {
+      // เพิ่มฟิลด์ coins ตั้งค่าเริ่มต้นที่ 10
+      userData['coins'] = 10;
+      
+      // บันทึกข้อมูลผู้ใช้ลงใน Firestore
+      await FirebaseFirestore.instance.collection('users').doc(uid).set(userData);
+      
+      print("✅ User data saved with 10 initial coins!");
+      
+      // บันทึกประวัติการได้รับ coins ใน subcollection (ถ้าต้องการ)
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('coinsHistory')
+          .add({
+            'amount': 10,
+            'type': 'credit',
+            'reason': 'Welcome bonus',
+            'timestamp': Timestamp.now(),
+          });
+          
+      print("✅ Initial coins history recorded!");
+    } catch (e) {
+      print("❌ Error creating user with coins: $e");
+      throw e; // ส่งต่อ error เพื่อให้ฟังก์ชันที่เรียกใช้จัดการต่อไป
+    }
+  }
+  
+  // ฟังก์ชันเพิ่ม coins ให้กับผู้ใช้ (สำหรับใช้ในอนาคต)
+  Future<void> _addCoinsToUser(String userId, int amount) async {
+    if (amount <= 0) return; // ไม่เพิ่มถ้าจำนวนไม่ถูกต้อง
+    
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .update({
+            'coins': FieldValue.increment(amount),
+          });
+      
+      // บันทึกประวัติการเพิ่ม coins
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('coinsHistory')
+          .add({
+            'amount': amount,
+            'type': 'credit',
+            'reason': 'System reward',
+            'timestamp': Timestamp.now(),
+          });
+          
+    } catch (e) {
+      print('Error adding coins to user: $e');
+    }
+  }
+
   Future<void> _registerUser() async {
     if (_formKey.currentState!.validate()) {
       print("✅ Form validation passed, proceeding with Firebase registration...");
@@ -61,18 +120,21 @@ class _SignUpPageState extends State<SignUpPage> {
         print("🔄 Saving user data to Firestore...");
         
         if (isUser) {
-          // Save User data
-          await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          // เตรียมข้อมูลผู้ใช้
+          Map<String, dynamic> userData = {
             'uid': uid,
             'name': _userNameController.text,
             'phone': _userPhoneController.text,
             'email': _emailController.text,
             'role': "User",
             'createdAt': Timestamp.now(),
-          });
-          print("✅ User data saved successfully in Firestore!");
+          };
+          
+          // สร้างผู้ใช้พร้อมกับ coins เริ่มต้น
+          await _createUserWithCoins(uid, userData);
+          print("✅ User data saved with initial coins successfully in Firestore!");
         } else {
-          // Save Partner data
+          // Save Partner data (ไม่มี coins)
           await FirebaseFirestore.instance.collection('partners').doc(uid).set({
             'uid': uid,
             'ownerName': _partnerNameController.text,
@@ -201,6 +263,16 @@ class _SignUpPageState extends State<SignUpPage> {
             _buildTextField('E-Mail', _emailController),
             const SizedBox(height: 15),
             _buildTextField('Password', _passwordController, isPassword: true),
+            const SizedBox(height: 15),
+            // ข้อความแสดงโบนัส coins เริ่มต้น
+            const Text(
+              '* New users get 10 coins as a welcome bonus! 🎁',
+              style: TextStyle(
+                color: Color(0xFF8B2323),
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
             const SizedBox(height: 30),
     
             _buildRegisterButton(),

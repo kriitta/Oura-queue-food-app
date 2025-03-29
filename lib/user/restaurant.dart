@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
 import 'dart:math';
+import '../system/notification_service.dart';
 
 class RestaurantDetailPage extends StatefulWidget {
   final String image;
@@ -65,7 +66,8 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
         double? latitude = data['latitude'] is double ? data['latitude'] : null;
-        double? longitude = data['longitude'] is double ? data['longitude'] : null;
+        double? longitude =
+            data['longitude'] is double ? data['longitude'] : null;
 
         if (latitude != null && longitude != null) {
           // Check location permission
@@ -74,20 +76,15 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
             permission = await Geolocator.requestPermission();
           }
 
-          if (permission == LocationPermission.always || 
+          if (permission == LocationPermission.always ||
               permission == LocationPermission.whileInUse) {
             // Get user's current position
             Position position = await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.high
-            );
+                desiredAccuracy: LocationAccuracy.high);
 
             // Calculate distance
             double calculatedDistance = _calculateDistance(
-              position.latitude,
-              position.longitude,
-              latitude,
-              longitude
-            );
+                position.latitude, position.longitude, latitude, longitude);
 
             setState(() {
               _distance = calculatedDistance;
@@ -105,12 +102,13 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
   }
 
   // Calculate distance between two coordinates (Haversine formula)
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _calculateDistance(
+      double lat1, double lon1, double lat2, double lon2) {
     var p = 0.017453292519943295; // Pi/180
     var c = cos;
-    var a = 0.5 - c((lat2 - lat1) * p)/2 + 
-            c(lat1 * p) * c(lat2 * p) * 
-            (1 - c((lon2 - lon1) * p))/2;
+    var a = 0.5 -
+        c((lat2 - lat1) * p) / 2 +
+        c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p)) / 2;
     return 12742 * asin(sqrt(a)); // 2*R*asin(sqrt(a)) where R = 6371 km
   }
 
@@ -303,7 +301,7 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     );
   }
 
-  // Function to add queue now in Firestore - combine implementations from both files
+  // Function to add queue now in Firestore - using the more structured approach from first file
   Future<void> _addQueueNow(String tableType, int numberOfPersons) async {
     try {
       setState(() {
@@ -322,6 +320,19 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
         return;
       }
 
+      final restaurantRef = FirebaseFirestore.instance
+          .collection('restaurants')
+          .doc(widget.restaurantId);
+      DocumentSnapshot restaurantDoc = await restaurantRef.get();
+
+      int lastNumber = (restaurantDoc.data()
+              as Map<String, dynamic>)['lastWalkInQueueNumber'] ??
+          0;
+
+      // Calculate new queue number
+      int nextNumber = (lastNumber + 1) > 999 ? 1 : lastNumber + 1;
+      String queueCode = '#Q-${nextNumber.toString().padLeft(3, '0')}';
+
       // Create new queue data
       Map<String, dynamic> queueData = {
         'userId': currentUser.uid,
@@ -331,14 +342,15 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
         'numberOfPersons': numberOfPersons,
         'timestamp': FieldValue.serverTimestamp(),
         'status': 'waiting',
+        'queueCode': queueCode,
+        'isReservation': false,
       };
 
       // Add queue to Firestore
-      DocumentReference queueRef = await FirebaseFirestore.instance
-          .collection('queues')
-          .add(queueData);
+      DocumentReference queueRef =
+          await FirebaseFirestore.instance.collection('queues').add(queueData);
 
-      // Add to myQueue of user (from second file)
+      // Add to myQueue of user
       await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
@@ -350,19 +362,20 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
         'tableType': tableType,
         'numberOfPersons': numberOfPersons,
         'status': 'waiting',
-        'queueCode': 'W-${queueRef.id.substring(0, 5).toUpperCase()}',
-        'queueNumber': '-', // No specific time yet
+        'queueCode': queueCode,
+        'queueNumber': '-',
         'isReservation': false,
         'createdAt': FieldValue.serverTimestamp(),
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      // Increase queue count in restaurant
+      // Increase queue count and update last walk-in number
       await FirebaseFirestore.instance
           .collection('restaurants')
           .doc(widget.restaurantId)
           .update({
         'queueCount': FieldValue.increment(1),
+        'lastWalkInQueueNumber': nextNumber,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -644,11 +657,12 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                           iconSize: 36,
                           onPressed: () {
                             setState(() {
-                              int minPersons = selectedTableType == '1-2 persons'
-                                  ? 1
-                                  : selectedTableType == '3-6 persons'
-                                      ? 3
-                                      : 7;
+                              int minPersons =
+                                  selectedTableType == '1-2 persons'
+                                      ? 1
+                                      : selectedTableType == '3-6 persons'
+                                          ? 3
+                                          : 7;
                               if (persons > minPersons) persons--;
                             });
                           },
@@ -674,11 +688,12 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                           iconSize: 36,
                           onPressed: () {
                             setState(() {
-                              int maxPersons = selectedTableType == '1-2 persons'
-                                  ? 2
-                                  : selectedTableType == '3-6 persons'
-                                      ? 6
-                                      : 12;
+                              int maxPersons =
+                                  selectedTableType == '1-2 persons'
+                                      ? 2
+                                      : selectedTableType == '3-6 persons'
+                                          ? 6
+                                          : 12;
                               if (persons < maxPersons) persons++;
                             });
                           },
@@ -723,7 +738,8 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                               selectedTime.hour,
                               selectedTime.minute,
                             );
-                            _addQueueInAdvance(fullDateTime, persons, selectedTableType);
+                            _addQueueInAdvance(
+                                fullDateTime, persons, selectedTableType);
                             Navigator.of(context).pop();
                           },
                           child: const Text(
@@ -743,9 +759,8 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
     );
   }
 
-  // Combined implementation for advance booking
-  Future<void> _addQueueInAdvance(
-      DateTime bookingDateTime, int persons, String tableType) async {
+  // Combined implementation for advance booking - using structured queue numbering and notification service
+  Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableType) async {
     try {
       setState(() {
         _isLoading = true;
@@ -762,48 +777,77 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
         return;
       }
 
-      // Add to advanceBookings collection
-      Map<String, dynamic> advanceBookingData = {
+      final restaurantRef = FirebaseFirestore.instance.collection('restaurants').doc(widget.restaurantId);
+      final restaurantDoc = await restaurantRef.get();
+
+      // Get today's key for queue numbering
+      final todayKey = DateTime.now().toIso8601String().substring(0, 10);
+      int lastNumber = (restaurantDoc.data() as Map<String, dynamic>)['reservationQueueNumbers']?[todayKey] ?? 0;
+      int nextNumber = (lastNumber + 1) > 999 ? 1 : lastNumber + 1;
+      String queueCode = '#R-${nextNumber.toString().padLeft(3, '0')}';
+
+      // Create new queue data for the main queues collection
+      Map<String, dynamic> queueData = {
         'userId': currentUser.uid,
         'restaurantId': widget.restaurantId,
         'restaurantName': widget.name,
-        'bookingTime': Timestamp.fromDate(bookingDateTime),
+        'tableType': tableType,
         'numberOfPersons': persons,
-        'tableType': tableType, // Add table type to booking data
+        'bookingTime': Timestamp.fromDate(bookingTime),
+        'status': 'booked',
+        'queueCode': queueCode,
+        'isReservation': true,
         'createdAt': FieldValue.serverTimestamp(),
-        'status': 'pending',
       };
 
-      DocumentReference docRef = await FirebaseFirestore.instance
-          .collection('advanceBookings')
-          .add(advanceBookingData);
+      // Add to queues collection
+      DocumentReference queueRef = await FirebaseFirestore.instance.collection('queues').add(queueData);
 
-      // Add to user's myQueue collection
-      try {
-        print('🟢 กำลังเพิ่มข้อมูลลง myQueue');
+      // Add to advanceBookings collection (from second file)
+      await FirebaseFirestore.instance.collection('advanceBookings').add({
+        'userId': currentUser.uid,
+        'restaurantId': widget.restaurantId,
+        'restaurantName': widget.name,
+        'bookingTime': Timestamp.fromDate(bookingTime),
+        'numberOfPersons': persons,
+        'tableType': tableType,
+        'createdAt': FieldValue.serverTimestamp(),
+        'status': 'pending',
+        'queueCode': queueCode,
+      });
 
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .collection('myQueue')
-            .add({
-          'restaurantId': widget.restaurantId,
-          'restaurantName': widget.name,
-          'restaurantLocation': widget.location,
-          'bookingTime': Timestamp.fromDate(bookingDateTime),
-          'numberOfPersons': persons,
-          'tableType': tableType, // Add table type to myQueue
-          'status': 'Booked',
-          'queueNumber':
-              '${bookingDateTime.hour.toString().padLeft(2, '0')}:${bookingDateTime.minute.toString().padLeft(2, '0')}',
-          'queueCode': 'R-${docRef.id.substring(0, 5).toUpperCase()}',
-          'isReservation': true,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+      // Add to myQueue of user
+      await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).collection('myQueue').add({
+        'restaurantId': widget.restaurantId,
+        'restaurantName': widget.name,
+        'restaurantLocation': widget.location,
+        'tableType': tableType,
+        'numberOfPersons': persons,
+        'bookingTime': Timestamp.fromDate(bookingTime),
+        'status': 'booked',
+        'queueCode': queueCode,
+        'queueNumber': '${bookingTime.hour.toString().padLeft(2, '0')}:${bookingTime.minute.toString().padLeft(2, '0')}',
+        'isReservation': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-        print('✅ เพิ่มลง myQueue สำเร็จ');
-      } catch (e) {
-        print('❌ เพิ่มลง myQueue ไม่สำเร็จ: $e');
+      // Update queue number for the day
+      await restaurantRef.set({
+        'reservationQueueNumbers': {
+          todayKey: nextNumber,
+        }
+      }, SetOptions(merge: true));
+
+      // Set up notifications (from second file)
+      if (bookingTime.isAfter(DateTime.now())) {
+        // Set up notifications 30 minutes and 15 minutes before booking time
+        final NotificationService notificationService = NotificationService();
+        await notificationService.scheduleQueueAdvanceNotifications(
+          restaurantId: widget.restaurantId,
+          restaurantName: widget.name,
+          bookingTime: bookingTime,
+          queueCode: queueCode,
+        );
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -823,9 +867,11 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
   @override
   Widget build(BuildContext context) {
     // Format distance text
-    String distanceText = _distance != null && _distance! >= 0 
-        ? '${_distance!.toStringAsFixed(1)} km' 
-        : _isLoadingDistance ? 'กำลังคำนวณระยะทาง...' : 'ไม่ทราบระยะทาง';
+    String distanceText = _distance != null && _distance! >= 0
+        ? '${_distance!.toStringAsFixed(1)} km'
+        : _isLoadingDistance
+            ? 'กำลังคำนวณระยะทาง...'
+            : 'ไม่ทราบระยะทาง';
 
     return Scaffold(
       backgroundColor: Colors.white,

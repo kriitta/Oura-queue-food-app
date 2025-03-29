@@ -71,6 +71,56 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<Map<String, dynamic>> _loadActivityStats() async {
+  Map<String, dynamic> stats = {
+    'reservationCount': '0',
+    'coins': '0',
+    
+  };
+  
+  try {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) return stats;
+    
+    // โหลดข้อมูล coins จาก user document
+    DocumentSnapshot userDoc = await _firestore
+        .collection('users')
+        .doc(currentUser.uid)
+        .get();
+        
+    if (userDoc.exists) {
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+      
+      // ตรวจสอบฟิลด์ coins
+      if (userData.containsKey('coins')) {
+        stats['coins'] = userData['coins'].toString();
+      } else {
+        // ถ้าไม่มีฟิลด์ coins ให้สร้างพร้อมตั้งค่าเริ่มต้นที่ 10
+        await _firestore
+            .collection('users')
+            .doc(currentUser.uid)
+            .update({'coins': 10});
+        stats['coins'] = '10';
+      }
+    }
+    
+    // นับจำนวนคิวทั้งหมดที่จองไปแล้ว
+    QuerySnapshot reservationsSnapshot = await _firestore
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('myQueue')
+        .get();
+    
+    stats['reservationCount'] = reservationsSnapshot.docs.length.toString();
+        
+    
+  } catch (e) {
+    print('Error loading activity stats: $e');
+  }
+  
+  return stats;
+}
+
   Future<void> _signOut() async {
     try {
       await _auth.signOut();
@@ -218,42 +268,99 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 20),
             
             // Activity Card
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
-                    spreadRadius: 2,
-                    blurRadius: 5,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Account Activity',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+            FutureBuilder<Map<String, dynamic>>(
+            future: _loadActivityStats(),
+            builder: (context, snapshot) {
+              String reservations = '0';
+              String coins = '0';
+              
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                // กำลังโหลดข้อมูล
+                return Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.2),
+                        spreadRadius: 2,
+                        blurRadius: 5,
+                        offset: const Offset(0, 3),
                       ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Account Activity',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Center(
+                          child: SizedBox(
+                            width: 20, 
+                            height: 20, 
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF8B2323),
+                              strokeWidth: 2,
+                            )
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 20),
-                    _buildStatsRow('Total Reservations', '0'),
-                    const SizedBox(height: 15),
-                    _buildStatsRow('Reward Points', '10'),
-                    const SizedBox(height: 15),
-                    _buildStatsRow('Favorite Restaurants', '0'),
+                  ),
+                );
+              }
+              
+              if (snapshot.hasData) {
+                reservations = snapshot.data!['reservationCount'] ?? '0';
+                coins = snapshot.data!['coins'] ?? '0';
+              }
+              
+              return Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
+                    ),
                   ],
                 ),
-              ),
-            ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Account Activity',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildStatsRow('Total Reservations', reservations),
+                      const SizedBox(height: 15),
+                      _buildStatsRow('Reward Points', coins),
+                      
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
             const SizedBox(height: 40),
             
             // Edit Profile Button

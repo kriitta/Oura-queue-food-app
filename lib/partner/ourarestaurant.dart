@@ -1744,7 +1744,7 @@ class SettingScreen extends StatelessWidget {
               buildSettingCard(
                 context,
                 icon: Icons.storefront,
-                title: "Edit Restaurant Info",
+                title: "Edit Restaurant",
                 page: EditRestaurantScreen(restaurantData: restaurantData),
               ),
               const SizedBox(height: 20),

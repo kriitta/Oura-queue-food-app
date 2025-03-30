@@ -40,15 +40,91 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
   bool _isLoading = false;
   double? _distance; // Variable to store distance
   bool _isLoadingDistance = false; // Loading state for distance calculation
+  List<String> _promotionImages = [];
+  bool _isLoadingPromotions = false;
 
   @override
-  void initState() {
-    super.initState();
-    _distance = widget.distance;
-    if (_distance == null || _distance! < 0) {
-      _fetchRestaurantCoordinates();
-    }
+void initState() {
+  super.initState();
+  _distance = widget.distance;
+  if (_distance == null || _distance! < 0) {
+    _fetchRestaurantCoordinates();
   }
+  
+  // เพิ่มการโหลดโปรโมชันแบบ real-time
+  _loadPromotions();
+}
+
+
+
+// ฟังก์ชันใหม่สำหรับโหลดโปรโมชัน
+// แก้ไขฟังก์ชัน _loadPromotions() เพื่อให้โหลดข้อมูลทุกครั้ง
+// แก้ไขฟังก์ชันโหลดโปรโมชันเพื่อรองรับทั้งสองรูปแบบการเก็บข้อมูล
+Future<void> _loadPromotions() async {
+  setState(() {
+    _isLoadingPromotions = true;
+  });
+  
+  try {
+    print('📱 กำลังโหลดโปรโมชั่นของร้าน ${widget.restaurantId}');
+    DocumentSnapshot restaurantDoc = await FirebaseFirestore.instance
+        .collection('restaurants')
+        .doc(widget.restaurantId)
+        .get();
+        
+    if (restaurantDoc.exists) {
+      final data = restaurantDoc.data() as Map<String, dynamic>;
+      
+      
+      // ถ้าไม่พบข้อมูลใน promotionImages ให้ตรวจสอบฟิลด์ promotionImageRefs
+      if (data.containsKey('promotionImageRefs') && data['promotionImageRefs'] is List) {
+        List<dynamic> refs = data['promotionImageRefs'];
+        if (refs.isNotEmpty) {
+          print('📱 พบข้อมูล promotionImageRefs จำนวน ${refs.length} รายการ');
+          
+          // โหลดรูปภาพจาก promotion_images collection
+          List<String> loadedImages = [];
+          for (String ref in refs.cast<String>()) {
+            try {
+              DocumentSnapshot imageDoc = await FirebaseFirestore.instance
+                  .collection('promotion_images')
+                  .doc(ref)
+                  .get();
+                  
+              if (imageDoc.exists) {
+                Map<String, dynamic> imageData = imageDoc.data() as Map<String, dynamic>;
+                if (imageData.containsKey('imageData') && imageData['imageData'] is String) {
+                  loadedImages.add(imageData['imageData']);
+                }
+              }
+            } catch (e) {
+              print('❌ ไม่สามารถโหลดรูปจาก ref $ref: $e');
+            }
+          }
+          
+          if (loadedImages.isNotEmpty) {
+            setState(() {
+              _promotionImages = loadedImages;
+            });
+            print('✅ โหลดโปรโมชันจาก promotionImageRefs ${loadedImages.length} รูปสำเร็จ');
+            return;
+          }
+        }
+      }
+      
+      print('⚠️ ไม่พบข้อมูลโปรโมชั่นในฟอร์แมตที่รองรับ');
+      setState(() {
+        _promotionImages = [];
+      });
+    }
+  } catch (e) {
+    print('❌ เกิดข้อผิดพลาดในการโหลดโปรโมชัน: $e');
+  } finally {
+    setState(() {
+      _isLoadingPromotions = false;
+    });
+  }
+}
 
   // Function to fetch restaurant coordinates and calculate distance
   Future<void> _fetchRestaurantCoordinates() async {
@@ -1020,15 +1096,15 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
                     _buildPromotionCarousel(),
                     const SizedBox(height: 20),
                     SmoothPageIndicator(
-                      controller: _pageController,
-                      count: widget.promotionImages.length,
-                      effect: const ExpandingDotsEffect(
-                        dotHeight: 8,
-                        dotWidth: 8,
-                        activeDotColor: Color(0xFF8B2323),
-                        dotColor: Colors.grey,
-                      ),
-                    ),
+  controller: _pageController,
+  count: _promotionImages.isEmpty ? widget.promotionImages.length : _promotionImages.length,
+  effect: const ExpandingDotsEffect(
+    dotHeight: 8,
+    dotWidth: 8,
+    activeDotColor: Color(0xFF8B2323),
+    dotColor: Colors.grey,
+  ),
+)
                   ],
                 ),
               ),
@@ -1139,92 +1215,110 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
 
   // Method to display promotion carousel
   Widget _buildPromotionCarousel() {
-    if (widget.promotionImages.isEmpty) {
-      return Container(
-        height: 200,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: const Center(
-          child: Text(
-            "No Promotions",
-            style: TextStyle(color: Colors.grey, fontSize: 18),
-          ),
-        ),
-      );
-    }
-
-    return SizedBox(
+  // ใช้ข้อมูลที่โหลดมาจาก Firestore แทนที่จะใช้ widget.promotionImages
+  final promotionImages = _promotionImages.isEmpty ? widget.promotionImages : _promotionImages;
+  
+  if (promotionImages.isEmpty) {
+    return Container(
       height: 200,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          PageView.builder(
-            controller: _pageController,
-            itemCount: widget.promotionImages.length,
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: () {
-                  _showPromotionPopup(
-                      widget.promotionImages[index], widget.isFirestoreImage);
-                },
-                child: _buildPromotionImage(widget.promotionImages[index]),
-              );
-            },
-          ),
-        ],
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Center(
+        child: _isLoadingPromotions 
+            ? CircularProgressIndicator(color: Color(0xFF8B2323))
+            : Text(
+                "No Promotions",
+                style: TextStyle(color: Colors.grey, fontSize: 18),
+              ),
       ),
     );
   }
 
-  // Method to build promotion image
-  Widget _buildPromotionImage(String imagePath) {
-    if (widget.isFirestoreImage && imagePath.isNotEmpty) {
-      try {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Image.memory(
-              base64Decode(imagePath),
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'Image not available',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                );
+  return SizedBox(
+    height: 200,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        PageView.builder(
+          controller: _pageController,
+          itemCount: promotionImages.length,
+          itemBuilder: (context, index) {
+            return GestureDetector(
+              onTap: () {
+                _showPromotionPopup(
+                    promotionImages[index], true); // เปลี่ยนเป็น true เสมอเมื่อใช้ข้อมูลจาก Firestore
               },
-            ),
+              child: _buildPromotionImage(promotionImages[index], true), // เช่นเดียวกัน
+            );
+          },
+        ),
+        // ปุ่มรีเฟรชโปรโมชัน
+        Positioned(
+          top: 0,
+          right: 0,
+          child: IconButton(
+            icon: Icon(Icons.refresh, color: Color(0xFF8B2323)),
+            onPressed: _loadPromotions,
           ),
-        );
-      } catch (e) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(15),
+        ),
+      ],
+    ),
+  );
+}
+
+  // Method to build promotion image
+  Widget _buildPromotionImage(String imagePath, [bool isFirestoreImage = false]) {
+  isFirestoreImage = isFirestoreImage || widget.isFirestoreImage;
+  
+  if (isFirestoreImage && imagePath.isNotEmpty) {
+    try {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Image.memory(
+            base64Decode(imagePath),
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              print('❌ เกิดข้อผิดพลาดในการแสดงรูปภาพ: $error');
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Center(
+                  child: Text(
+                    'Image not available',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              );
+            },
           ),
-          child: const Center(
-            child: Text(
-              'Image not available',
-              style: TextStyle(color: Colors.grey),
-            ),
+        ),
+      );
+    } catch (e) {
+      print('❌ เกิดข้อผิดพลาดในการแปลงรูปภาพ: $e');
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Center(
+          child: Text(
+            'Image not available',
+            style: TextStyle(color: Colors.grey),
           ),
-        );
-      }
-    } else {
+        ),
+      );
+    }
+  } else {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
@@ -1284,4 +1378,5 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
       ),
     );
   }
+  
 }

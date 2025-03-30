@@ -1476,78 +1476,108 @@ class _RewardScreenState extends State<RewardScreen> {
   bool _showSuccess = false;
 
   Future<void> _submitReward() async {
-    String rewardId = _rewardNumberController.text.trim();
-    if (rewardId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter Reward ID")),
-      );
-      return;
-    }
+  String rewardId = _rewardNumberController.text.trim();
+  if (rewardId.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please enter Reward ID")),
+    );
+    return;
+  }
 
-    setState(() {
-      _isLoading = true;
-      _rewardInfo = null;
-      _showSuccess = false;
-    });
+  setState(() {
+    _isLoading = true;
+    _rewardInfo = null;
+    _showSuccess = false;
+  });
 
-    try {
-      // ค้นหา reward ใน rewardHistory ของผู้ใช้ทุกคน
-      QuerySnapshot userSnapshot = await _firestore.collection('users').get();
-      bool found = false;
+  // Show processing dialog
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: CircularProgressIndicator(color: Color(0xFF8B2323)),
+    ),
+  );
 
-      for (var userDoc in userSnapshot.docs) {
-        QuerySnapshot rewardSnapshot = await _firestore
+  try {
+    // ค้นหา reward ใน rewardHistory ของผู้ใช้ทุกคน
+    QuerySnapshot userSnapshot = await _firestore.collection('users').get();
+    bool found = false;
+    String? userId;
+    String? rewardDocId;
+
+    for (var userDoc in userSnapshot.docs) {
+      QuerySnapshot rewardSnapshot = await _firestore
+          .collection('users')
+          .doc(userDoc.id)
+          .collection('rewardHistory')
+          .where('rewardId', isEqualTo: rewardId)
+          .where('status', isEqualTo: 'pending') // เฉพาะที่ยังรอการยืนยัน
+          .get();
+
+      if (rewardSnapshot.docs.isNotEmpty) {
+        // พบ reward ที่ตรงกัน
+        DocumentSnapshot rewardDoc = rewardSnapshot.docs.first;
+        rewardDocId = rewardDoc.id;
+        userId = userDoc.id;
+        Map<String, dynamic> rewardData = rewardDoc.data() as Map<String, dynamic>;
+
+        // อัพเดตสถานะเป็น confirmed
+        await _firestore
             .collection('users')
             .doc(userDoc.id)
             .collection('rewardHistory')
-            .where('rewardId', isEqualTo: rewardId)
-            .where('status', isEqualTo: 'pending') // เฉพาะที่ยังรอการยืนยัน
-            .get();
+            .doc(rewardDoc.id)
+            .update({
+              'status': 'confirmed',
+              'confirmedAt': Timestamp.now(),
+              'confirmedBy': widget.restaurantData?['restaurantId'] ?? 'unknown'
+            });
 
-        if (rewardSnapshot.docs.isNotEmpty) {
-          // พบ reward ที่ตรงกัน
-          DocumentSnapshot rewardDoc = rewardSnapshot.docs.first;
-          Map<String, dynamic> rewardData = rewardDoc.data() as Map<String, dynamic>;
+        // เก็บข้อมูลเพื่อแสดงผล
+        setState(() {
+          _rewardInfo = rewardData;
+          _showSuccess = true;
+        });
 
-          // อัพเดตสถานะเป็น confirmed
-          await _firestore
-              .collection('users')
-              .doc(userDoc.id)
-              .collection('rewardHistory')
-              .doc(rewardDoc.id)
-              .update({
-                'status': 'confirmed',
-                'confirmedAt': Timestamp.now(),
-                'confirmedBy': widget.restaurantData?['restaurantId'] ?? 'unknown'
-              });
-
-          // เก็บข้อมูลเพื่อแสดงผล
-          setState(() {
-            _rewardInfo = rewardData;
-            _showSuccess = true;
-          });
-
-          found = true;
-          break;
-        }
+        found = true;
+        break;
       }
-
-      if (!found) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Reward ID not found or already confirmed")),
-        );
-      }
-    } catch (e) {
-      print("Error submitting reward: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
+
+    // ปิด loading dialog
+    Navigator.of(context, rootNavigator: true).pop();
+
+    if (found) {
+      // แสดงผลแบบ success
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Reward confirmed successfully!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Reward ID not found or already confirmed"),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  } catch (e) {
+    // ปิด loading dialog ในกรณีเกิดข้อผิดพลาด
+    Navigator.of(context, rootNavigator: true).pop();
+    
+    print("Error submitting reward: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error: $e")),
+    );
+  } finally {
+    setState(() {
+      _isLoading = false;
+    });
   }
+}
 
   @override
   Widget build(BuildContext context) {

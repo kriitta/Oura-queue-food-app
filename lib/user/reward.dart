@@ -14,9 +14,9 @@ class RewardPage extends StatefulWidget {
 class _RewardPageState extends State<RewardPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+
   List<Map<String, dynamic>> redemptionHistory = [];
-  int availableCoins = 0;  // เริ่มต้นที่ 0 และจะโหลดจาก Firebase
+  int availableCoins = 0; // เริ่มต้นที่ 0 และจะโหลดจาก Firebase
   bool _isLoading = true;
   late StreamSubscription<DocumentSnapshot> _rewardStatusListener;
 
@@ -27,13 +27,13 @@ class _RewardPageState extends State<RewardPage> {
   }
 
   @override
-void dispose() {
-  // ถ้ามีการติดตามสถานะ ให้ยกเลิกเมื่อออกจากหน้าจอ
-  if (_rewardStatusListener != null) {
-    _rewardStatusListener.cancel();
+  void dispose() {
+    // ถ้ามีการติดตามสถานะ ให้ยกเลิกเมื่อออกจากหน้าจอ
+    if (_rewardStatusListener != null) {
+      _rewardStatusListener.cancel();
+    }
+    super.dispose();
   }
-  super.dispose();
-}
 
   // โหลด coins และประวัติการแลกรางวัลของผู้ใช้
   Future<void> _loadUserCoinsAndHistory() async {
@@ -43,17 +43,16 @@ void dispose() {
 
     try {
       User? currentUser = _auth.currentUser;
-      
+
       if (currentUser != null) {
         // 1. โหลดข้อมูล coins จากเอกสารของผู้ใช้
-        DocumentSnapshot userDoc = await _firestore
-            .collection('users')
-            .doc(currentUser.uid)
-            .get();
+        DocumentSnapshot userDoc =
+            await _firestore.collection('users').doc(currentUser.uid).get();
 
         if (userDoc.exists) {
-          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-          
+          Map<String, dynamic> userData =
+              userDoc.data() as Map<String, dynamic>;
+
           // ตรวจสอบว่าผู้ใช้มีฟิลด์ coins หรือไม่
           if (userData.containsKey('coins')) {
             setState(() {
@@ -65,12 +64,12 @@ void dispose() {
                 .collection('users')
                 .doc(currentUser.uid)
                 .update({'coins': 10});
-            
+
             setState(() {
               availableCoins = 10;
             });
           }
-          
+
           // 2. โหลดประวัติการแลกรางวัล
           QuerySnapshot historySnapshot = await _firestore
               .collection('users')
@@ -78,7 +77,7 @@ void dispose() {
               .collection('rewardHistory')
               .orderBy('redeemedAt', descending: true)
               .get();
-          
+
           List<Map<String, dynamic>> historyList = [];
           for (var doc in historySnapshot.docs) {
             Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
@@ -91,7 +90,7 @@ void dispose() {
             };
             historyList.add(historyItem);
           }
-          
+
           setState(() {
             redemptionHistory = historyList;
           });
@@ -108,113 +107,126 @@ void dispose() {
       });
     }
   }
-  
+
   // เพิ่มประวัติการแลกรางวัลทั้งใน state และ Firestore
   // เพิ่มประวัติการแลกรางวัลทั้งใน state และ Firestore
-Future<bool> addRedemptionHistory(String title, String coins, String rewardId, String date) async {
-  User? currentUser = _auth.currentUser;
-  if (currentUser == null) return false;
+  Future<bool> addRedemptionHistory(
+      String title, String coins, String rewardId, String date) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) return false;
 
-  try {
-    int deductedCoins = int.parse(coins.replaceAll(RegExp(r'[^0-9]'), '')) * -1; // แปลงเป็นตัวเลข
-    
-    // ตรวจสอบอีกครั้งว่ามี coins เพียงพอ (double check)
-    DocumentSnapshot userDoc = await _firestore
-        .collection('users')
-        .doc(currentUser.uid)
-        .get();
-        
-    if (!userDoc.exists) return false;
-    
-    Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-    int currentCoins = userData['coins'] ?? 0;
-    
-    if (currentCoins < -deductedCoins) {
-      return false; // coins ไม่เพียงพอ
-    }
-
-    // สร้างข้อมูลประวัติการแลกรางวัลก่อน
-    Map<String, dynamic> historyData = {
-      'title': title,
-      'coins': coins,
-      'rewardId': rewardId,
-      'redeemedAt': Timestamp.now(),
-    };
-    
-    // กำหนด timeout สำหรับ transaction เพื่อป้องกันการค้าง
-    bool isCompleted = false;
-    
-    // แทนการใช้ transaction ที่อาจมีปัญหา ให้แยกเป็น 2 ขั้นตอน
     try {
-      // 1. อัพเดทจำนวน coins ก่อน
-      await _firestore
-          .collection('users')
-          .doc(currentUser.uid)
-          .update({'coins': FieldValue.increment(deductedCoins)});
-      
-      // 2. เพิ่มประวัติการแลกรางวัล
-      await _firestore
-          .collection('users')
-          .doc(currentUser.uid)
-          .collection('rewardHistory')
-          .add(historyData);
-      
-      isCompleted = true;
-    } catch (e) {
-      print('Error during reward transaction: $e');
-      // ถ้าเกิดข้อผิดพลาด ลองคืน coins ให้ผู้ใช้
+      int deductedCoins = int.parse(coins.replaceAll(RegExp(r'[^0-9]'), '')) *
+          -1; // แปลงเป็นตัวเลข
+
+      // ตรวจสอบอีกครั้งว่ามี coins เพียงพอ (double check)
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(currentUser.uid).get();
+
+      if (!userDoc.exists) return false;
+
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+      int currentCoins = userData['coins'] ?? 0;
+
+      if (currentCoins < -deductedCoins) {
+        return false; // coins ไม่เพียงพอ
+      }
+
+      // สร้างข้อมูลประวัติการแลกรางวัลก่อน
+      Map<String, dynamic> historyData = {
+        'title': title,
+        'coins': coins,
+        'rewardId': rewardId,
+        'redeemedAt': Timestamp.now(),
+      };
+
+      // กำหนด timeout สำหรับ transaction เพื่อป้องกันการค้าง
+      bool isCompleted = false;
+
+      // แทนการใช้ transaction ที่อาจมีปัญหา ให้แยกเป็น 2 ขั้นตอน
       try {
+        // 1. อัพเดทจำนวน coins ก่อน
         await _firestore
             .collection('users')
             .doc(currentUser.uid)
-            .update({'coins': FieldValue.increment(-deductedCoins)});
-      } catch (restoreError) {
-        print('Error restoring coins: $restoreError');
+            .update({'coins': FieldValue.increment(deductedCoins)});
+
+        // 2. เพิ่มประวัติการแลกรางวัล
+        await _firestore
+            .collection('users')
+            .doc(currentUser.uid)
+            .collection('rewardHistory')
+            .add(historyData);
+
+        isCompleted = true;
+      } catch (e) {
+        print('Error during reward transaction: $e');
+        // ถ้าเกิดข้อผิดพลาด ลองคืน coins ให้ผู้ใช้
+        try {
+          await _firestore
+              .collection('users')
+              .doc(currentUser.uid)
+              .update({'coins': FieldValue.increment(-deductedCoins)});
+        } catch (restoreError) {
+          print('Error restoring coins: $restoreError');
+        }
+        return false;
+      }
+
+      // ถ้า timeout หรือไม่สำเร็จ ให้ return false
+      if (!isCompleted) {
+        return false;
+      }
+
+      // 3. อัพเดท UI หลังจากทำรายการสำเร็จ
+      if (context.mounted) {
+        setState(() {
+          // อัพเดท coins ในแอพ
+          availableCoins += deductedCoins;
+
+          // เพิ่มประวัติลงใน list ที่แสดงใน UI
+          redemptionHistory.insert(0, {
+            'title': title,
+            'coins': coins,
+            'rewardId': rewardId,
+            'date': date,
+          });
+        });
+      }
+
+      return true;
+    } catch (e) {
+      print('Error adding redemption history: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error recording reward: $e')),
+        );
       }
       return false;
     }
-    
-    // ถ้า timeout หรือไม่สำเร็จ ให้ return false
-    if (!isCompleted) {
-      return false;
-    }
-    
-    // 3. อัพเดท UI หลังจากทำรายการสำเร็จ
-    if (context.mounted) {
-      setState(() {
-        // อัพเดท coins ในแอพ
-        availableCoins += deductedCoins;
-        
-        // เพิ่มประวัติลงใน list ที่แสดงใน UI
-        redemptionHistory.insert(0, {
-          'title': title,
-          'coins': coins,
-          'rewardId': rewardId,
-          'date': date,
-        });
-      });
-    }
-    
-    return true;
-  } catch (e) {
-    print('Error adding redemption history: $e');
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error recording reward: $e')),
-      );
-    }
-    return false;
   }
-}
 
   // แปลง timestamp เป็นข้อความวันที่
   String _formatDate(dynamic timestamp) {
     if (timestamp == null) return 'N/A';
-    
+
     try {
       if (timestamp is Timestamp) {
         DateTime dateTime = timestamp.toDate();
-        List<String> months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        List<String> months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec'
+        ];
         return '${months[dateTime.month - 1]} ${dateTime.day}, ${dateTime.year}';
       }
       return 'N/A';
@@ -251,7 +263,8 @@ Future<bool> addRedemptionHistory(String title, String coins, String rewardId, S
                     itemBuilder: (context, index) {
                       var history = redemptionHistory[index];
                       return ListTile(
-                        leading: const Icon(Icons.card_giftcard, color: Color(0xFF8B2323)),
+                        leading: const Icon(Icons.card_giftcard,
+                            color: Color(0xFF8B2323)),
                         title: Text(history['title'] ?? ''),
                         subtitle: Text('Redeemed on ${history['date']}'),
                         trailing: Text(
@@ -265,7 +278,8 @@ Future<bool> addRedemptionHistory(String title, String coins, String rewardId, S
                             builder: (context) {
                               return AlertDialog(
                                 title: const Text('Reward ID'),
-                                content: Text('Reward ID: ${history['rewardId']}'),
+                                content:
+                                    Text('Reward ID: ${history['rewardId']}'),
                                 actions: [
                                   TextButton(
                                     onPressed: () {
@@ -298,422 +312,526 @@ Future<bool> addRedemptionHistory(String title, String coins, String rewardId, S
 
   // Show reward popup
   void _showRewardPopup(BuildContext context, String title, String coins,
-    {String? imagePath, IconData? icon, String? customIcon, required String rewardId}) {
-  showDialog(
-    context: context,
-    builder: (context) {
-      return Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        backgroundColor: Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (imagePath != null && imagePath.isNotEmpty)
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      image: AssetImage(imagePath),
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                )
-              else if (icon != null)
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black12,
-                  ),
-                  child: Center(
-                    child: Icon(icon, size: 60, color: Colors.black),
-                  ),
-                )
-              else if (customIcon != null)
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black12,
-                  ),
-                  child: Center(
-                    child: Text(
-                      customIcon,
-                      style: const TextStyle(
-                          fontSize: 48, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              const Divider(height: 20, color: Colors.black26),
-              const Text(
-                'Do you want to get this reward ?',
-                style: TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                coins,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    style: TextButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF8B2323)),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    child: const Text(
-                      'Not yet',
-                      style: TextStyle(fontSize: 16, color: Color(0xFF8B2323)),
-                    ),
-                  ),
-                  ElevatedButton(
-  onPressed: () async {
-  int rewardCoins = int.parse(coins.split(' ')[0]);
-  if (availableCoins >= rewardCoins) {
-    // สร้างข้อมูลที่จำเป็นก่อนปิด dialog แรก
-    String currentDate = _getCurrentDate();
-    String finalRewardId = rewardId; // เก็บค่า rewardId ไว้ใช้ภายหลัง
-    
-    // ปิด dialog แรกทันที
-    Navigator.of(context).pop();
-    
-    // สร้างเอกสารใน rewardHistory ก่อนแสดง dialog
-    User? currentUser = _auth.currentUser;
-    String rewardHistoryId = '';
-    
-    if (currentUser != null) {
-      // สร้างเอกสาร rewardHistory ด้วยสถานะ 'pending'
-      DocumentReference historyRef = await _firestore
-        .collection('users')
-        .doc(currentUser.uid)
-        .collection('rewardHistory')
-        .add({
-          'title': title,
-          'coins': '-$rewardCoins coins',
-          'rewardId': finalRewardId,
-          'redeemedAt': Timestamp.now(),
-          'status': 'pending',
-          'confirmedAt': null,
-          'confirmedBy': null
-        });
-      
-      // เก็บ ID ของเอกสารเพื่อใช้ในการติดตามสถานะ
-      rewardHistoryId = historyRef.id;
-      
-      // หักคะแนนของผู้ใช้ทันที
-      await _firestore
-        .collection('users')
-        .doc(currentUser.uid)
-        .update({'coins': FieldValue.increment(-rewardCoins)});
-      
-      // อัพเดต UI แสดงคะแนนที่ลดลงทันที
-      setState(() {
-        availableCoins -= rewardCoins;
-      });
-    }
-    
-    // แสดง dialog คำสั่งกำลังประมวลผล พร้อม RewardID
-    if (context.mounted) {
-      showDialog(
-        barrierDismissible: false,
-        context: context,
-        builder: (dialogContext) {
-          
-          // ถ้ามี rewardHistoryId ให้ติดตามสถานะการเปลี่ยนแปลง
-          if (currentUser != null && rewardHistoryId.isNotEmpty) {
-            // เริ่มติดตามการเปลี่ยนแปลงสถานะจาก Firestore
-            _rewardStatusListener = _firestore
-              .collection('users')
-              .doc(currentUser.uid)
-              .collection('rewardHistory')
-              .doc(rewardHistoryId)
-              .snapshots()
-              .listen((snapshot) {
-                if (snapshot.exists) {
-                  Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
-                  
-                  // ถ้าสถานะถูกเปลี่ยนเป็น confirmed โดย partner
-                  if (data['status'] == 'confirmed' && context.mounted) {
-                    // ยกเลิกการติดตาม
-                    _rewardStatusListener.cancel();
-                    
-                    // ปิด dialog ที่กำลังแสดงอยู่
-                    Navigator.of(dialogContext).pop();
-                    
-                    // แสดง dialog ยืนยันความสำเร็จ
-                    showDialog(
-                      context: context,
-                      builder: (context) {
-                        return AlertDialog(
-                          title: const Text('Reward Redeemed Successfully'),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.check_circle,
-                                color: Colors.green,
-                                size: 50,
-                              ),
-                              const SizedBox(height: 20),
-                              Text('Your Reward ID: $finalRewardId'),
-                              const SizedBox(height: 10),
-                              const Text(
-                                'Your reward has been successfully confirmed by the restaurant!',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.green),
-                              ),
-                            ],
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                                _loadUserCoinsAndHistory(); // รีเฟรชข้อมูล
-                              },
-                              child: const Text('OK'),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  }
-                }
-              });
-          }
-          
-          return AlertDialog(
-            title: const Text('Processing Reward'),
-            content: Column(
+      {String? imagePath,
+      IconData? icon,
+      String? customIcon,
+      required String rewardId}) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const CircularProgressIndicator(color: Color(0xFF8B2323)),
-                const SizedBox(height: 20),
-                const Text('Processing your request...'),
-                const SizedBox(height: 10),
-                Text(
-                  'Your Reward ID: $finalRewardId',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 5),
-                const Text('Please keep this ID for reference.'),
-                const SizedBox(height: 15),
-                const Text(
-                  'Waiting for restaurant staff confirmation...',
-                  style: TextStyle(color: Colors.orange),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    }
-  } else {
-                        // Coins ไม่เพียงพอ
-                        if (context.mounted) {
-                          showDialog(
-                            context: context,
-                            builder: (context) {
-                              return AlertDialog(
-                                title: const Text('Insufficient Coins'),
-                                content: const Text('You do not have enough coins to redeem this reward.'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                    child: const Text('OK'),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF8B2323),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                // Display reward image/icon
+                if (imagePath != null && imagePath.isNotEmpty)
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      image: DecorationImage(
+                        image: AssetImage(imagePath),
+                        fit: BoxFit.contain,
                       ),
                     ),
-                    child: const Text(
-                      'Confirm',
-                      style: TextStyle(fontSize: 16, color: Colors.white),
+                  )
+                else if (icon != null)
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black12,
                     ),
+                    child: Center(
+                      child: Icon(icon, size: 60, color: Colors.black),
+                    ),
+                  )
+                else if (customIcon != null)
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black12,
+                    ),
+                    child: Center(
+                      child: Text(
+                        customIcon,
+                        style: const TextStyle(
+                            fontSize: 48, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Divider(height: 20, color: Colors.black26),
+                const Text(
+                  'Do you want to get this reward ?',
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  coins,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: TextButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF8B2323)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text(
+                        'Not yet',
+                        style:
+                            TextStyle(fontSize: 16, color: Color(0xFF8B2323)),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        int rewardCoins = int.parse(coins.split(' ')[0]);
+                        if (availableCoins >= rewardCoins) {
+                          // สร้างข้อมูลที่จำเป็นก่อนปิด dialog แรก
+                          String currentDate = _getCurrentDate();
+                          String finalRewardId =
+                              rewardId; // เก็บค่า rewardId ไว้ใช้ภายหลัง
+
+                          // ปิด dialog แรกทันที
+                          Navigator.of(context).pop();
+
+                          // สร้างเอกสารใน rewardHistory ก่อนแสดง dialog
+                          User? currentUser = _auth.currentUser;
+                          String rewardHistoryId = '';
+
+                          if (currentUser != null) {
+                            // สร้างเอกสาร rewardHistory ด้วยสถานะ 'pending'
+                            DocumentReference historyRef = await _firestore
+                                .collection('users')
+                                .doc(currentUser.uid)
+                                .collection('rewardHistory')
+                                .add({
+                              'title': title,
+                              'coins': '-$rewardCoins coins',
+                              'rewardId': finalRewardId,
+                              'redeemedAt': Timestamp.now(),
+                              'status': 'pending',
+                              'confirmedAt': null,
+                              'confirmedBy': null
+                            });
+
+                            // เก็บ ID ของเอกสารเพื่อใช้ในการติดตามสถานะ
+                            rewardHistoryId = historyRef.id;
+
+                            // หักคะแนนของผู้ใช้ทันที
+                            await _firestore
+                                .collection('users')
+                                .doc(currentUser.uid)
+                                .update({
+                              'coins': FieldValue.increment(-rewardCoins)
+                            });
+
+                            // อัพเดต UI แสดงคะแนนที่ลดลงทันที
+                            setState(() {
+                              availableCoins -= rewardCoins;
+                            });
+                          }
+
+                          // แสดง dialog คำสั่งกำลังประมวลผล พร้อม RewardID
+                          if (context.mounted) {
+                            // ใช้ ValueNotifier เพื่อติดตามการเปลี่ยนแปลงสถานะ
+                            ValueNotifier<bool> isConfirmed =
+                                ValueNotifier<bool>(false);
+                            ValueNotifier<String> statusMessage = ValueNotifier<
+                                    String>(
+                                'Waiting for restaurant staff confirmation...');
+
+                            // แสดง dialog และตรวจสอบการเปลี่ยนแปลงสถานะตามเวลาจริง
+                            showDialog(
+  barrierDismissible: false,
+  context: context,
+  builder: (dialogContext) {
+    // ถ้ามี rewardHistoryId ให้ติดตามสถานะการเปลี่ยนแปลง
+    if (currentUser != null && rewardHistoryId.isNotEmpty) {
+      // เริ่มติดตามการเปลี่ยนแปลงสถานะจาก Firestore
+      _rewardStatusListener = _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('rewardHistory')
+          .doc(rewardHistoryId)
+          .snapshots()
+          .listen((snapshot) {
+        if (snapshot.exists) {
+          Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+
+          // ถ้าสถานะถูกเปลี่ยนเป็น confirmed โดย partner
+          if (data['status'] == 'confirmed') {
+            // อัพเดตสถานะใน dialog
+            isConfirmed.value = true;
+            statusMessage.value = 'Your reward has been confirmed!';
+            
+            // รอสักครู่ แล้วเปลี่ยนเป็น dialog ที่สามารถปิดได้
+            Future.delayed(const Duration(seconds: 1), () {
+              // ยกเลิกการติดตาม
+              _rewardStatusListener.cancel();
+              
+              // ปิด dialog ที่กำลังแสดงอยู่
+              Navigator.of(dialogContext).pop();
+              
+              // แสดง dialog ใหม่ที่สามารถปิดได้โดยการแตะพื้นที่นอก dialog
+              showDialog(
+                context: context,
+                barrierDismissible: false,  // ตั้งค่าเป็น true เพื่อให้ปิดได้โดยการแตะพื้นที่นอก dialog
+                builder: (context) {
+                  return AlertDialog(
+                    title: const Text('Reward Confirmed'),
+                    // ใช้ actions row เพื่อวางปุ่มปิดบนขวามือ
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.grey),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _loadUserCoinsAndHistory();  // รีเฟรชข้อมูล
+                        },
+                      ),
+                    ],
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          color: Colors.green,
+                          size: 50,
+                        ),
+                        const SizedBox(height: 20),
+                        Text('Your Reward ID: $finalRewardId'),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Your reward has been successfully confirmed!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.green),
+                        ),
+                        // เพิ่มปุ่มปิดที่ชัดเจนด้านล่าง
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _loadUserCoinsAndHistory();  // รีเฟรชข้อมูล
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B2323),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                          ),
+                          child: const Text(
+                            'Close',
+                            style: TextStyle(fontSize: 16, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            });
+          }
+        }
+      });
+    }
+
+                                // ใช้ ValueListenableBuilder เพื่อสร้าง UI ที่จะอัพเดตอัตโนมัติเมื่อค่าเปลี่ยน
+                                return ValueListenableBuilder<bool>(
+      valueListenable: isConfirmed,
+      builder: (context, confirmed, child) {
+        return ValueListenableBuilder<String>(
+          valueListenable: statusMessage,
+          builder: (context, message, child) {
+            return AlertDialog(
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Processing Reward'),
+                  // เพิ่มปุ่ม X ตรงนี้
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    onPressed: () {
+                      // ยกเลิกการติดตามเมื่อผู้ใช้ปิด dialog
+                      if (_rewardStatusListener != null) {
+                        _rewardStatusListener.cancel();
+                      }
+                      Navigator.of(dialogContext).pop();
+                      
+                      // ในกรณีที่ผู้ใช้ปิดก่อนรายการถูกยืนยัน ควรมีการจัดการข้อมูลเพิ่มเติม
+                      // เช่น ตรวจสอบว่าถ้ายังไม่ได้ยืนยัน อาจต้องยกเลิกรายการหรือเปลี่ยนสถานะเป็น 'cancelled'
+                      if (!confirmed && currentUser != null && rewardHistoryId.isNotEmpty) {
+                        // อัพเดตสถานะเป็น 'cancelled' ใน Firestore
+                        _firestore
+                            .collection('users')
+                            .doc(currentUser.uid)
+                            .collection('rewardHistory')
+                            .doc(rewardHistoryId)
+                            .update({'status': 'cancelled'})
+                            .then((_) {
+                          // รีโหลดข้อมูลหลังจากยกเลิก
+                          _loadUserCoinsAndHistory();
+                        });
+                      }
+                    },
                   ),
                 ],
               ),
-            ],
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  confirmed
+                      ? const Icon(Icons.check_circle, color: Colors.green, size: 40)
+                      : const CircularProgressIndicator(color: Color(0xFF8B2323)),
+                  const SizedBox(height: 20),
+                  confirmed
+                      ? const Text('Reward confirmed!')
+                      : const Text('Processing your request...'),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Your Reward ID: $finalRewardId',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text('Please keep this ID for reference.'),
+                  const SizedBox(height: 15),
+                  Text(
+                    message,
+                    style: TextStyle(color: confirmed ? Colors.green : Colors.orange),
+                  ),
+                ],
+              ),
+            );
+          }
+        );
+      }
+    );
+  },
+);
+                          }
+                        } else {
+                          // Coins ไม่เพียงพอ
+                          if (context.mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                  title: const Text('Insufficient Coins'),
+                                  content: const Text(
+                                      'You do not have enough coins to redeem this reward.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: const Text('OK'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B2323),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text(
+                        'Confirm',
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   // สร้างข้อความวันที่ปัจจุบัน
   String _getCurrentDate() {
     DateTime now = DateTime.now();
-    List<String> months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    List<String> months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return '${months[now.month - 1]} ${now.day}, ${now.year}';
   }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      backgroundColor: const Color(0xFF8B2323),
-      title: const Text(
-        'Reward',
-        style: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-      centerTitle: true,
-      leading: IconButton(
-        icon: const Icon(Icons.history, color: Colors.white, size: 30),
-        onPressed: _showHistoryDialog,
-      ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  '$availableCoins',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Text('coins'),
-              ],
-            ),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF8B2323),
+        title: const Text(
+          'Reward',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
-      ],
-    ),
-    body: _isLoading
-        ? const Center(
-            child: CircularProgressIndicator(color: Color(0xFF8B2323)),
-          )
-        : RefreshIndicator(
-            onRefresh: _loadUserCoinsAndHistory, // เพิ่ม refresh pull-down
-            color: const Color(0xFF8B2323),
-            child: Column(
-              children: [
-                Expanded(
-                  child: Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.all(16),
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      children: [
-                        RewardCard(
-                          assetIcon: 'assets/images/queue-pass.png',
-                          title: 'Queue Pass',
-                          coins: '500 coins',
-                          rewardId: 'RP001',
-                          useAsset: true,
-                          onRedemption: (String newRewardId) async {
-                            // ฟังก์ชันนี้จะถูกเรียกหลังจากการยืนยันการแลกรางวัล
-                            // แต่ไม่ต้องทำอะไรเพิ่มเติม เพราะเราจัดการทุกอย่างใน _showRewardPopup แล้ว
-                          },
-                          showRewardPopup: _showRewardPopup,
-                        ),
-                        RewardCard(
-                          assetIcon: 'assets/images/starbucks.png',
-                          title: 'Gift Voucher',
-                          coins: '150 coins',
-                          rewardId: 'RP002',
-                          useAsset: true,
-                          onRedemption: (String newRewardId) async {
-                            // ฟังก์ชันนี้จะถูกเรียกหลังจากการยืนยันการแลกรางวัล
-                          },
-                          showRewardPopup: _showRewardPopup,
-                        ),
-                        RewardCard(
-                          assetIcon: 'assets/images/discount.png',
-                          title: 'Discount 20%',
-                          coins: '300 coins',
-                          rewardId: 'RP003',
-                          useAsset: true,
-                          onRedemption: (String newRewardId) async {
-                            // ฟังก์ชันนี้จะถูกเรียกหลังจากการยืนยันการแลกรางวัล
-                          },
-                          showRewardPopup: _showRewardPopup,
-                        ),
-                        RewardCard(
-                          assetIcon: 'assets/images/discount.png',
-                          title: 'Discount 10%',
-                          coins: '200 coins',
-                          rewardId: 'RP004',
-                          useAsset: true,
-                          onRedemption: (String newRewardId) async {
-                            // ฟังก์ชันนี้จะถูกเรียกหลังจากการยืนยันการแลกรางวัล
-                          },
-                          showRewardPopup: _showRewardPopup,
-                        ),
-                      ],
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.history, color: Colors.white, size: 30),
+          onPressed: _showHistoryDialog,
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    '$availableCoins',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-                // แสดงข้อความบรรทัดล่างเพื่อบอกว่าสามารถดึงลงเพื่อรีเฟรชได้
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    "Pull down to refresh coins and history",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  ),
-                ),
-              ],
+                  const SizedBox(width: 4),
+                  const Text('coins'),
+                ],
+              ),
             ),
           ),
-  );
-}
+        ],
+      ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF8B2323)),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadUserCoinsAndHistory, // เพิ่ม refresh pull-down
+              color: const Color(0xFF8B2323),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.all(16),
+                      child: GridView.count(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 16,
+                        children: [
+                          RewardCard(
+                            assetIcon: 'assets/images/queue-pass.png',
+                            title: 'Queue Pass',
+                            coins: '500 coins',
+                            rewardId: 'RP001',
+                            useAsset: true,
+                            onRedemption: (String newRewardId) async {
+                              // ฟังก์ชันนี้จะถูกเรียกหลังจากการยืนยันการแลกรางวัล
+                              // แต่ไม่ต้องทำอะไรเพิ่มเติม เพราะเราจัดการทุกอย่างใน _showRewardPopup แล้ว
+                            },
+                            showRewardPopup: _showRewardPopup,
+                          ),
+                          RewardCard(
+                            assetIcon: 'assets/images/starbucks.png',
+                            title: 'Gift Voucher',
+                            coins: '150 coins',
+                            rewardId: 'RP002',
+                            useAsset: true,
+                            onRedemption: (String newRewardId) async {
+                              // ฟังก์ชันนี้จะถูกเรียกหลังจากการยืนยันการแลกรางวัล
+                            },
+                            showRewardPopup: _showRewardPopup,
+                          ),
+                          RewardCard(
+                            assetIcon: 'assets/images/discount.png',
+                            title: 'Discount 20%',
+                            coins: '300 coins',
+                            rewardId: 'RP003',
+                            useAsset: true,
+                            onRedemption: (String newRewardId) async {
+                              // ฟังก์ชันนี้จะถูกเรียกหลังจากการยืนยันการแลกรางวัล
+                            },
+                            showRewardPopup: _showRewardPopup,
+                          ),
+                          RewardCard(
+                            assetIcon: 'assets/images/discount.png',
+                            title: 'Discount 10%',
+                            coins: '200 coins',
+                            rewardId: 'RP004',
+                            useAsset: true,
+                            onRedemption: (String newRewardId) async {
+                              // ฟังก์ชันนี้จะถูกเรียกหลังจากการยืนยันการแลกรางวัล
+                            },
+                            showRewardPopup: _showRewardPopup,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // แสดงข้อความบรรทัดล่างเพื่อบอกว่าสามารถดึงลงเพื่อรีเฟรชได้
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      "Pull down to refresh coins and history",
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
 }
 
 class RewardCard extends StatelessWidget {
@@ -726,7 +844,11 @@ class RewardCard extends StatelessWidget {
   final bool useAsset;
   final bool useCustomIcon;
   final Function(String) onRedemption; // Callback for redemption
-  final Function(BuildContext, String, String, {String? imagePath, IconData? icon, String? customIcon, required String rewardId}) showRewardPopup;
+  final Function(BuildContext, String, String,
+      {String? imagePath,
+      IconData? icon,
+      String? customIcon,
+      required String rewardId}) showRewardPopup;
 
   const RewardCard({
     super.key,

@@ -21,6 +21,7 @@ void main() async {
   // เริ่มต้นระบบการแจ้งเตือน
   final notificationService = NotificationService();
   await notificationService.init();
+  await NotificationService().resetAll();
 
   runApp(const QuraApp());
 }
@@ -544,12 +545,12 @@ class StatusChip extends StatelessWidget {
   }
 }
 
-class RestaurantCard extends StatelessWidget {
+class RestaurantCard extends StatefulWidget {
   final String image;
   final String name;
   final String location;
   final double distance;
-  final int queue;
+  final int queue; // จะใช้เป็นค่าเริ่มต้นก่อนที่จะได้ค่าจริงจาก Stream
   final Color backgroundColor;
   final bool isAvailable;
   final List<String> promotionImages;
@@ -571,27 +572,80 @@ class RestaurantCard extends StatelessWidget {
   });
 
   @override
+  State<RestaurantCard> createState() => _RestaurantCardState();
+}
+
+class _RestaurantCardState extends State<RestaurantCard> {
+  Stream<int>? _queueCountStream;
+  int _currentQueueCount = 0;
+  StreamSubscription? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentQueueCount = widget.queue; // ใช้ค่าเริ่มต้นจาก property
+    _setupQueueCountStream();
+  }
+
+  void _setupQueueCountStream() {
+    // Stream ที่นับจำนวนเอกสารในคอลเลคชัน queues ที่มี restaurantId ตรงกับร้านนี้
+    // และมีสถานะเป็น 'waiting' (รอคิวอยู่)
+    _queueCountStream = FirebaseFirestore.instance
+        .collection('queues')
+        .where('restaurantId', isEqualTo: widget.restaurantId)
+        .where('status', isEqualTo: 'waiting')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+
+    // ลงทะเบียนการฟังการเปลี่ยนแปลงและอัพเดทสถานะเมื่อข้อมูลเปลี่ยน
+    _subscription = _queueCountStream?.listen((count) {
+      if (mounted) {
+        setState(() {
+          _currentQueueCount = count;
+        });
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(RestaurantCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // ถ้า restaurantId เปลี่ยน ต้องตั้งค่า stream ใหม่
+    if (widget.restaurantId != oldWidget.restaurantId) {
+      _subscription?.cancel();
+      _setupQueueCountStream();
+    }
+  }
+
+  @override
+  void dispose() {
+    // ยกเลิก subscription เมื่อ widget ถูกทำลาย
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     // ฟอร์แมตระยะทาง
-    String distanceText = distance >= 0 
-        ? '${distance.toStringAsFixed(1)} km' 
+    String distanceText = widget.distance >= 0 
+        ? '${widget.distance.toStringAsFixed(1)} km' 
         : 'ไม่ทราบระยะทาง';
 
     return GestureDetector(
       onTap: () {
-        if (isAvailable) {
+        if (widget.isAvailable) {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => RestaurantDetailPage(
-                image: image,
-                name: name,
-                location: location,
-                queue: queue,
-                backgroundColor: backgroundColor,
-                promotionImages: promotionImages,
-                isFirestoreImage: isFirestoreImage,
-                restaurantId: restaurantId,
+                image: widget.image,
+                name: widget.name,
+                location: widget.location,
+                queue: _currentQueueCount, // ใช้จำนวนคิวจริงที่นับได้
+                backgroundColor: widget.backgroundColor,
+                promotionImages: widget.promotionImages,
+                isFirestoreImage: widget.isFirestoreImage,
+                restaurantId: widget.restaurantId,
               ),
             ),
           );
@@ -600,9 +654,9 @@ class RestaurantCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isAvailable ? Colors.white : Colors.grey[300],
+          color: widget.isAvailable ? Colors.white : Colors.grey[300],
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isAvailable ? const Color(0xFF8B2323) : Colors.grey, width: 2),
+          border: Border.all(color: widget.isAvailable ? const Color(0xFF8B2323) : Colors.grey, width: 2),
         ),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
@@ -619,11 +673,11 @@ class RestaurantCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      name,
+                      widget.name,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: isAvailable ? Colors.black : Colors.grey,
+                        color: widget.isAvailable ? Colors.black : Colors.grey,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -632,14 +686,14 @@ class RestaurantCard extends StatelessWidget {
                         Icon(
                           Icons.location_on,
                           size: 16,
-                          color: isAvailable ? Colors.grey : Colors.grey[600],
+                          color: widget.isAvailable ? Colors.grey : Colors.grey[600],
                         ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            location,
+                            widget.location,
                             style: TextStyle(
-                              color: isAvailable ? Colors.grey : Colors.grey[600],
+                              color: widget.isAvailable ? Colors.grey : Colors.grey[600],
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -654,30 +708,31 @@ class RestaurantCard extends StatelessWidget {
                         Icon(
                           Icons.directions,
                           size: 16,
-                          color: isAvailable ? Colors.grey : Colors.grey[600],
+                          color: widget.isAvailable ? Colors.grey : Colors.grey[600],
                         ),
                         const SizedBox(width: 4),
                         Text(
                           distanceText,
                           style: TextStyle(
-                            color: isAvailable ? Colors.grey : Colors.grey[600],
+                            color: widget.isAvailable ? Colors.grey : Colors.grey[600],
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
+                    // แสดงจำนวนคิวที่นับได้จริง
                     Row(
                       children: [
                         Icon(
                           Icons.people,
                           size: 16,
-                          color: isAvailable ? Colors.grey : Colors.grey[600],
+                          color: widget.isAvailable ? Colors.grey : Colors.grey[600],
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Queue : $queue',
+                          'Queue : $_currentQueueCount',
                           style: TextStyle(
-                            color: isAvailable ? Colors.grey : Colors.grey[600],
+                            color: widget.isAvailable ? Colors.grey : Colors.grey[600],
                           ),
                         ),
                       ],
@@ -693,11 +748,11 @@ class RestaurantCard extends StatelessWidget {
   }
 
   Widget _buildRestaurantImage() {
-    if (isFirestoreImage && image != null && image.isNotEmpty) {
+    if (widget.isFirestoreImage && widget.image != null && widget.image.isNotEmpty) {
       try {
         // ถ้าเป็นรูปจาก Firestore (base64)
         return Image.memory(
-          base64Decode(image),
+          base64Decode(widget.image),
           width: 80,
           height: 80,
           fit: BoxFit.cover,
@@ -711,7 +766,7 @@ class RestaurantCard extends StatelessWidget {
     } else {
       // ถ้าเป็นรูปจาก assets
       return Image.asset(
-        image,
+        widget.image,
         width: 80,
         height: 80,
         fit: BoxFit.cover,
@@ -726,10 +781,10 @@ class RestaurantCard extends StatelessWidget {
     return Container(
       width: 80,
       height: 80,
-      color: backgroundColor,
+      color: widget.backgroundColor,
       child: Center(
         child: Text(
-          name.isNotEmpty ? name.substring(0, 1) : "?",
+          widget.name.isNotEmpty ? widget.name.substring(0, 1) : "?",
           style: const TextStyle(
             color: Colors.white,
             fontSize: 24,

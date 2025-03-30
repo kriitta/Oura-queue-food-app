@@ -315,9 +315,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Update queue after passing or advancing
-  // แก้ไขฟังก์ชัน _updateQueue ในคลาส _HomeScreenState
-// แก้ไขฟังก์ชัน _updateQueue ในคลาส _HomeScreenState
 Future<void> _updateQueue(int index, bool isNext) async {
   try {
     String? restaurantId = widget.restaurantData?['restaurantId'];
@@ -373,11 +370,21 @@ Future<void> _updateQueue(int index, bool isNext) async {
     if (snapshot.docs.isNotEmpty) {
       DocumentSnapshot queueDoc = snapshot.docs[0];
       String userId = queueDoc['userId'] ?? '';
+      String queueDocId = queueDoc.id; // เก็บ doc ID เพื่อใช้ในการลบข้อมูล
       
-      // Update queue status instead of deleting
+      // แสดง loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF8B2323)),
+        ),
+      );
+      
+      // อัปเดตสถานะของคิว
       await FirebaseFirestore.instance
           .collection('queues')
-          .doc(queueDoc.id)
+          .doc(queueDocId)
           .update({
             'status': isNext ? 'completed' : 'skipped',
             'completedAt': Timestamp.now(),
@@ -449,15 +456,27 @@ Future<void> _updateQueue(int index, bool isNext) async {
                     'confirmedBy': restaurantId,
                     'description': 'Reward for completing service at $currentQueueCode'
                   });
-                  
-              // Optionally, send notification to user about receiving coins
-              // This would require implementing a notification system
             }
           } catch (e) {
             print('❌ Error adding coins to user: $e');
           }
         }
       }
+      
+      // ลบคิวจาก Firestore ทันที (ไม่ใช้ delay)
+      try {
+        await FirebaseFirestore.instance
+            .collection('queues')
+            .doc(queueDocId)
+            .delete();
+            
+        print('✅ ลบคิว $currentQueueCode ออกจาก database เรียบร้อยแล้ว');
+      } catch (deleteError) {
+        print('❌ เกิดข้อผิดพลาดในการลบคิว: $deleteError');
+      }
+      
+      // ปิด loading indicator
+      Navigator.of(context, rootNavigator: true).pop();
     }
     
     // Show completion message
@@ -477,6 +496,8 @@ Future<void> _updateQueue(int index, bool isNext) async {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('เกิดข้อผิดพลาดในการอัปเดตคิว: $e')),
     );
+    // ปิด loading indicator ในกรณีเกิดข้อผิดพลาด
+    Navigator.of(context, rootNavigator: true).pop();
   }
 }
 
@@ -1107,7 +1128,9 @@ Widget build(BuildContext context) {
       final userId = upcomingReservations[index]['userId'];
       final queueCode = upcomingReservations[index]['id'];
       
-      // ลบคิวจาก collection queues
+      print('🔍 กำลังลบคิวรหัส: $queueCode (ID: $docId)');
+      
+      // อัปเดตสถานะก่อน
       await FirebaseFirestore.instance
           .collection('queues')
           .doc(docId)
@@ -1117,6 +1140,8 @@ Widget build(BuildContext context) {
             'cancelledBy': 'restaurant',
           });
           
+      print('✅ อัปเดตสถานะคิว $queueCode เป็น cancelled แล้ว');
+      
       // อัปเดทข้อมูลใน myQueue ของผู้ใช้
       if (userId != null) {
         // ค้นหาเอกสารใน myQueue ของผู้ใช้
@@ -1141,11 +1166,7 @@ Widget build(BuildContext context) {
                   'notificationMessage': 'คิวของคุณถูกทางร้านยกเลิก',
                   'notificationSent': true,
                 });
-                
-            print('✅ อัพเดทสถานะคิว $queueCode เป็น cancelled ในฝั่ง user แล้ว');
           }
-        } else {
-          print('⚠️ ไม่พบข้อมูลคิว $queueCode ใน myQueue ของผู้ใช้');
         }
         
         // ส่งการแจ้งเตือน
@@ -1160,6 +1181,19 @@ Widget build(BuildContext context) {
           print('❌ Error sending notification: $notificationError');
         }
       }
+      
+      // ลบคิวจาก Firestore ทันที (ไม่ใช้ delay)
+      try {
+        await FirebaseFirestore.instance
+            .collection('queues')
+            .doc(docId)
+            .delete();
+            
+        print('✅ ลบคิว $queueCode ออกจาก database เรียบร้อยแล้ว');
+      } catch (deleteError) {
+        print('❌ เกิดข้อผิดพลาดในการลบคิว: $deleteError');
+        throw deleteError; // ส่ง error ไปที่ catch block ด้านนอก
+      }
 
       // ปิด loading indicator
       Navigator.of(context, rootNavigator: true).pop();
@@ -1169,7 +1203,7 @@ Widget build(BuildContext context) {
       });
       
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Reservation cancelled successfully")),
+        const SnackBar(content: Text("ลบการจองเรียบร้อยแล้ว")),
       );
     } catch (e) {
       // ปิด loading indicator ในกรณีเกิดข้อผิดพลาด
@@ -1177,7 +1211,7 @@ Widget build(BuildContext context) {
       
       print('❌ Error deleting reservation: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error cancelling reservation: $e")),
+        SnackBar(content: Text("เกิดข้อผิดพลาดในการลบคิว: $e")),
       );
     }
   },
@@ -1208,6 +1242,8 @@ Widget build(BuildContext context) {
           child: CircularProgressIndicator(color: Color(0xFF8B2323)),
         ),
       );
+      
+      print('🔍 กำลังทำรายการ Complete คิวรหัส: $queueCode (ID: $docId)');
       
       // ถ้าไม่มี userId ให้พยายามค้นหาอีกครั้ง
       if (userId == null || userId.toString().isEmpty) {
@@ -1241,6 +1277,8 @@ Widget build(BuildContext context) {
             'notificationSent': true,
             'completedBy': widget.restaurantData?['restaurantId'] ?? 'unknown',
           });
+
+      print('✅ อัปเดตสถานะคิว $queueCode เป็น completed แล้ว');
 
       // ถ้ามี userId (หลังจากค้นหาเพิ่มเติมแล้ว) ให้อัปเดทข้อมูลและเพิ่ม coins
       if (userId != null && userId.toString().isNotEmpty) {
@@ -1404,6 +1442,20 @@ Widget build(BuildContext context) {
         );
       }
 
+      // ลบคิวจาก Firestore ทันที (แทนที่การใช้ delay)
+      try {
+        print('🗑️ กำลังลบคิว $queueCode จาก Firestore...');
+        await FirebaseFirestore.instance
+            .collection('queues')
+            .doc(docId)
+            .delete();
+            
+        print('✅ ลบคิว $queueCode ออกจาก database เรียบร้อยแล้ว');
+      } catch (deleteError) {
+        print('❌ เกิดข้อผิดพลาดในการลบคิว: $deleteError');
+        // ไม่ throw error เพื่อให้โค้ดยังทำงานต่อไปแม้จะลบไม่สำเร็จ
+      }
+
       // ปิด loading indicator
       Navigator.of(context, rootNavigator: true).pop();
 
@@ -1428,7 +1480,7 @@ Widget build(BuildContext context) {
       if (userId != null && userId.toString().isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("ทำรายการสำเร็จ ผู้ใช้ได้รับ 2 coins แล้ว"),
+            content: Text("ทำรายการสำเร็จ ผู้ใช้ได้รับ 2 coins แล้ว และลบคิวเรียบร้อย"),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),

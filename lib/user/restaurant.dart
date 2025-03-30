@@ -985,22 +985,21 @@ Future<void> _loadPromotions() async {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(Icons.location_on,
                             size: 16, color: Colors.grey),
                         const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            widget.location,
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 16,
-                            ),
-                            textAlign: TextAlign.center,
+                        Text(
+                          widget.location,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
                           ),
                         ),
+                        
                       ],
                     ),
                     const SizedBox(height: 5),
@@ -1018,28 +1017,7 @@ Future<void> _loadPromotions() async {
                             fontSize: 16,
                           ),
                         ),
-                        // Add refresh button for distance
-                        if (!_isLoadingDistance)
-                          IconButton(
-                            icon: const Icon(
-                              Icons.refresh,
-                              size: 14,
-                              color: Colors.grey,
-                            ),
-                            onPressed: _fetchRestaurantCoordinates,
-                            tooltip: 'รีเฟรชระยะทาง',
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                        if (_isLoadingDistance)
-                          const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.grey,
-                            ),
-                          ),
+                        
                       ],
                     ),
                     const SizedBox(height: 5),
@@ -1254,15 +1232,7 @@ Future<void> _loadPromotions() async {
             );
           },
         ),
-        // ปุ่มรีเฟรชโปรโมชัน
-        Positioned(
-          top: 0,
-          right: 0,
-          child: IconButton(
-            icon: Icon(Icons.refresh, color: Color(0xFF8B2323)),
-            onPressed: _loadPromotions,
-          ),
-        ),
+        
       ],
     ),
   );

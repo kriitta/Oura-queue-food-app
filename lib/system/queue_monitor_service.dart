@@ -103,48 +103,56 @@ class QueueMonitorService {
   }
   
   // ตรวจสอบและส่งการแจ้งเตือนตามข้อมูลคิว
-  void _checkForNotifications(Map<String, dynamic> queueData) {
-    final String queueCode = queueData['queueCode'] ?? '';
-    if (queueCode.isEmpty) return;
+  // ตรวจสอบและส่งการแจ้งเตือนตามข้อมูลคิว
+void _checkForNotifications(Map<String, dynamic> queueData) {
+  final String queueCode = queueData['queueCode'] ?? '';
+  if (queueCode.isEmpty) return;
+  
+  final bool hasNotification = queueData['notificationSent'] == true;
+  final String? notificationMessage = queueData['notificationMessage'];
+  final String status = queueData['status'] ?? '';
+  
+  // สร้าง key เฉพาะสำหรับการแจ้งเตือนนี้
+  final String notificationKey = '$queueCode:$status:${notificationMessage ?? ""}';
+  
+  // สร้าง key ถาวร (ไม่มีวันที่)
+  final String permanentNotificationKey = '$queueCode:$status:${notificationMessage ?? ""}';
+  
+  // ตรวจสอบว่าเป็นการแจ้งเตือนใหม่หรือไม่และยังไม่เคยส่ง (ทั้งในประวัติชั่วคราวและถาวร)
+  bool alreadySentPermanent = _notificationService.containsPermanentNotification(permanentNotificationKey);
+  
+  if ((hasNotification || status == 'completed' || status == 'cancelled') && 
+      !_processedNotifications.contains(notificationKey) &&
+      !alreadySentPermanent) {
     
-    final bool hasNotification = queueData['notificationSent'] == true;
-    final String? notificationMessage = queueData['notificationMessage'];
-    final String status = queueData['status'] ?? '';
+    String title = 'การจองของคุณ';
+    String body = notificationMessage ?? '';
     
-    // สร้าง key เฉพาะสำหรับการแจ้งเตือนนี้
-    final String notificationKey = '$queueCode:$status:${notificationMessage ?? ""}';
-    
-    // ตรวจสอบว่าเป็นการแจ้งเตือนใหม่หรือไม่
-    if ((hasNotification || status == 'completed' || status == 'cancelled') && 
-        !_processedNotifications.contains(notificationKey)) {
-      
-      String title = 'การจองของคุณ';
-      String body = notificationMessage ?? '';
-      
-      // กำหนดค่าเริ่มต้นถ้าไม่มีข้อความ
-      if (body.isEmpty) {
-        if (status == 'completed') {
-          body = 'คุณได้ทำการเช็คอินเรียบร้อยแล้ว!';
-        } else if (status == 'cancelled') {
-          title = 'การจองของคุณถูกยกเลิก';
-          body = 'คิวของคุณถูกทางร้านยกเลิก';
-        }
-      }
-      
-      // ส่งการแจ้งเตือนเฉพาะเมื่อมีข้อความ
-      if (body.isNotEmpty) {
-        _notificationService.showNotification(
-          id: queueCode.hashCode,
-          title: title,
-          body: body,
-          payload: 'queue:$queueCode:$status',
-        );
-        
-        // เพิ่มเข้าไปในชุดของการแจ้งเตือนที่ประมวลผลแล้ว
-        _processedNotifications.add(notificationKey);
+    // กำหนดค่าเริ่มต้นถ้าไม่มีข้อความ
+    if (body.isEmpty) {
+      if (status == 'completed') {
+        body = 'ถึงคิวของคุณเรียบร้อยแล้ว และได้รับ 2 coins!';
+      } else if (status == 'cancelled') {
+        title = 'การจองของคุณถูกยกเลิก';
+        body = 'คิวของคุณถูกทางร้านยกเลิก';
       }
     }
+    
+    // ส่งการแจ้งเตือนเฉพาะเมื่อมีข้อความ
+    if (body.isNotEmpty) {
+      _notificationService.showNotification(
+        id: queueCode.hashCode,
+        title: title,
+        body: body,
+        payload: 'queue:$queueCode:$status',
+      );
+      
+      // เพิ่มเข้าไปในชุดของการแจ้งเตือนที่ประมวลผลแล้ว (ทั้งชั่วคราวและถาวร)
+      _processedNotifications.add(notificationKey);
+      _notificationService.addPermanentNotification(permanentNotificationKey);
+    }
   }
+}
   
   // เริ่มติดตามคิวที่ระบุ
   void _startMonitoringQueue({
@@ -156,6 +164,13 @@ class QueueMonitorService {
     if (timestamp == null) return;
     
     final queueId = '$restaurantId:$queueCode';
+    
+    // ตรวจสอบว่ามีการเริ่มติดตามไปแล้วหรือไม่
+    if (_activeMonitors.containsKey(queueId)) {
+      print('ข้ามการเริ่มติดตาม: $queueId (กำลังติดตามอยู่แล้ว)');
+      return;
+    }
+    
     print('เริ่มติดตามคิว: $queueId');
     
     // ดึงข้อมูลคิวทั้งหมดจากร้านอาหารที่ระบุและติดตามการเปลี่ยนแปลง
@@ -206,13 +221,19 @@ class QueueMonitorService {
     // ล้างประวัติการแจ้งเตือน
     final parts = queueId.split(':');
     if (parts.length >= 2) {
+      // ล้างทั้งประวัติปกติและถาวร
       _notificationService.clearQueueNotificationHistory(parts[0], parts[1]);
+      _notificationService.clearQueuePermanentNotificationHistory(parts[0], parts[1]);
     }
   }
   
   // ล้างการแจ้งเตือนที่เกี่ยวข้องกับคิวที่ระบุ
   void clearQueueNotifications(String queueCode) {
+    // ล้างประวัติทั้งในคลาสนี้
     _processedNotifications.removeWhere((key) => key.startsWith('$queueCode:'));
+    
+    // และในคลาส NotificationService
+    _notificationService.clearQueuePermanentNotificationHistory('', queueCode);
   }
   
   // หยุดติดตามคิวทั้งหมด

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:project_final/system/main.dart';
 import '../user/main.dart';
 import '../partner/create_restaurant.dart';
 
@@ -39,7 +40,7 @@ class AuthService {
         } else {
           // กรณีที่เป็น user ทั่วไป นำทางไปยังหน้าหลักของ user
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const QuraApp()),
+            MaterialPageRoute(builder: (context) => const WelcomePage()),
           );
         }
       }

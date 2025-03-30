@@ -917,23 +917,28 @@ Widget build(BuildContext context) {
                           : null,
                     ),
                     const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.restaurantData?['name'] ?? 'Your Restaurant',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        Text(
-                          '📍 ${widget.restaurantData?['location'] ?? 'Unknown location'}',
-                          style: const TextStyle(color: Colors.black),
-                        ),
-                      ],
-                    ),
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.restaurantData?['name'] ?? 'Your Restaurant',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            '📍 ${widget.restaurantData?['location'] ?? 'Unknown location'}',
+            style: const TextStyle(color: Colors.black, fontSize: 14),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+          ),
+        ],
+      ),
+    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -1302,7 +1307,7 @@ Widget build(BuildContext context) {
                   .update({
                     'status': 'completed',
                     'completedAt': completionTime,
-                    'notificationMessage': 'คุณได้รับบริการเรียบร้อยแล้ว และได้รับ 2 coins!',
+                    'notificationMessage': 'ทำการเช็คอินเรียบร้อยแล้ว และได้รับ 2 coins!',
                     'notificationSent': true,
                   });
                   
@@ -1380,15 +1385,15 @@ Widget build(BuildContext context) {
               
               // ส่งการแจ้งเตือน
               try {
-                await _notificationService.showNotification(
-                  id: queueCode.hashCode,
-                  title: 'การจองของคุณสำเร็จแล้ว',
-                  body: 'คุณได้รับบริการเรียบร้อยแล้ว และได้รับ 2 coins!',
-                  payload: 'reservation_completed:$queueCode',
-                );
-              } catch (notificationError) {
-                print('❌ Error sending notification: $notificationError');
-              }
+  await _notificationService.showNotification(
+    id: queueCode.hashCode,
+    title: 'คิวร้าน ${widget.restaurantData?['name'] ?? 'Restaurant'}',
+    body: 'ทำการเช็คอินเรียบร้อยแล้ว และได้รับ 2 coins!',
+    payload: 'reservation_completed:$queueCode',
+  );
+} catch (notificationError) {
+  print('❌ Error sending notification: $notificationError');
+}
             } else {
               print('⚠️ ไม่พบข้อมูลผู้ใช้ $userId - พยายามสร้างผู้ใช้ใหม่');
               
@@ -1806,14 +1811,8 @@ class SettingScreen extends StatelessWidget {
                 title: "Edit Promotions",
                 page: EditPromotionScreen(restaurantData: restaurantData),
               ),
-              const SizedBox(height: 20),
-              buildSettingCard(
-                context,
-                icon: Icons.schedule,
-                title: "Manage Reservations",
-                page: ManageReservationScreen(restaurantData: restaurantData),
-              ),
-              const SizedBox(height: 40),
+              
+              const SizedBox(height: 140),
               buildLogoutButton(context),
             ],
           ),

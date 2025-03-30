@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:project_final/partner/edit_restaurant_screen.dart';
 import '../system/main.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import './verification.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:geocoding/geocoding.dart';

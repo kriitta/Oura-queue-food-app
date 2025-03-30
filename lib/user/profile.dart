@@ -122,18 +122,23 @@ class _ProfilePageState extends State<ProfilePage> {
 }
 
   Future<void> _signOut() async {
-    try {
-      await _auth.signOut();
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const MainApp()),
-        (route) => false,
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error signing out: $e')),
-      );
-    }
+  try {
+    await _auth.signOut();
+    if (!mounted) return;
+    
+    // ลบทุก route และเริ่มต้นที่ MainApp
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const MainApp()),
+      (Route<dynamic> route) => false,  // ตรวจสอบให้แน่ใจว่ามีการลบทุก route
+    );
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error signing out: $e')),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

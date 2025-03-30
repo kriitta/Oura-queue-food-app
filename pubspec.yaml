@@ -56,6 +56,7 @@ dependencies:
   flutter_local_notifications: ^16.3.2
   timezone: ^0.9.2
   shared_preferences: ^2.2.0
+  flutter_phoenix: ^1.1.1
 
 
 dev_dependencies:
@@ -110,6 +111,10 @@ flutter:
     - assets/images/queue-pass.png
     - assets/images/oura-character.png
     - assets/images/oura.png
+    - assets/images/dessert.png
+    - assets/images/buy1free1.jpg
+    - assets/images/friend.png
+    - assets/images/signature.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

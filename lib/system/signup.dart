@@ -45,33 +45,51 @@ class _SignUpPageState extends State<SignUpPage> {
 
   // ฟังก์ชันสำหรับสร้างผู้ใช้ใหม่ใน Users collection และเพิ่ม coins เริ่มต้น
   Future<void> _createUserWithCoins(String uid, Map<String, dynamic> userData) async {
-    try {
-      // เพิ่มฟิลด์ coins ตั้งค่าเริ่มต้นที่ 10
-      userData['coins'] = 10;
-      
-      // บันทึกข้อมูลผู้ใช้ลงใน Firestore
-      await FirebaseFirestore.instance.collection('users').doc(uid).set(userData);
-      
-      print("✅ User data saved with 10 initial coins!");
-      
-      // บันทึกประวัติการได้รับ coins ใน subcollection (ถ้าต้องการ)
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('coinsHistory')
-          .add({
-            'amount': 10,
-            'type': 'credit',
-            'reason': 'Welcome bonus',
-            'timestamp': Timestamp.now(),
-          });
-          
-      print("✅ Initial coins history recorded!");
-    } catch (e) {
-      print("❌ Error creating user with coins: $e");
-      throw e; // ส่งต่อ error เพื่อให้ฟังก์ชันที่เรียกใช้จัดการต่อไป
+  try {
+    // เพิ่มการตรวจสอบข้อมูลก่อนสร้าง
+    if (userData.isEmpty) {
+      throw Exception('User data cannot be empty');
     }
+
+    // ตรวจสอบว่ามี field ที่จำเป็นครบถ้วน
+    if (!userData.containsKey('name') || 
+        !userData.containsKey('email') || 
+        !userData.containsKey('phone')) {
+      throw Exception('Missing required user data fields');
+    }
+
+    // เพิ่มฟิลด์ coins และ uid 
+    userData['uid'] = uid;
+    userData['coins'] = 10;
+    userData['role'] = 'User';
+    userData['createdAt'] = Timestamp.now();
+
+    // บันทึกข้อมูลผู้ใช้
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .set(userData, SetOptions(merge: true));
+    
+    print("✅ User data saved with 10 initial coins!");
+    
+    // บันทึกประวัติการได้รับ coins
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('coinsHistory')
+        .add({
+          'amount': 10,
+          'type': 'credit',
+          'reason': 'Welcome bonus',
+          'timestamp': Timestamp.now(),
+        });
+        
+    print("✅ Initial coins history recorded!");
+  } catch (e) {
+    print("❌ Error creating user with coins: $e");
+    rethrow;
   }
+}
   
   // ฟังก์ชันเพิ่ม coins ให้กับผู้ใช้ (สำหรับใช้ในอนาคต)
   Future<void> _addCoinsToUser(String userId, int amount) async {
@@ -103,37 +121,27 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> _registerUser() async {
-    if (_formKey.currentState!.validate()) {
-      print("✅ Form validation passed, proceeding with Firebase registration...");
-      
-      try {
-        print("🔄 Creating Firebase user...");
-        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
+  if (_formKey.currentState!.validate()) {
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
-        print("✅ Firebase Auth Success, UID: ${userCredential.user?.uid}");
+      String uid = userCredential.user!.uid;
 
-        String uid = userCredential.user!.uid;
-
-        print("🔄 Saving user data to Firestore...");
+      if (isUser) {
+        Map<String, dynamic> userData = {
+          'name': _userNameController.text,
+          'phone': _userPhoneController.text,
+          'email': _emailController.text,
+          'role': "User",
+          'createdAt': Timestamp.now(),
+        };
         
-        if (isUser) {
-          // เตรียมข้อมูลผู้ใช้
-          Map<String, dynamic> userData = {
-            'uid': uid,
-            'name': _userNameController.text,
-            'phone': _userPhoneController.text,
-            'email': _emailController.text,
-            'role': "User",
-            'createdAt': Timestamp.now(),
-          };
-          
-          // สร้างผู้ใช้พร้อมกับ coins เริ่มต้น
-          await _createUserWithCoins(uid, userData);
-          print("✅ User data saved with initial coins successfully in Firestore!");
-        } else {
+        await _createUserWithCoins(uid, userData);
+      } else {
+
           // Save Partner data (ไม่มี coins)
           await FirebaseFirestore.instance.collection('partners').doc(uid).set({
             'uid': uid,
@@ -148,20 +156,30 @@ class _SignUpPageState extends State<SignUpPage> {
           print("✅ Partner data saved successfully in Firestore!");
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${isUser ? "User" : "Partner"} Registered Successfully!')),
-        );
-        
-        // Navigate back to login page
-        Navigator.pop(context);
-        
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${isUser ? "User" : "Partner"} Registered Successfully!')),
+      );
+      
+      Navigator.pop(context);
+      
+    } on FirebaseAuthException catch (e) {
+      // จัดการ error จาก Firebase Authentication
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Registration Error: ${e.message}')),
+      );
+    } on FirebaseException catch (e) {
+      // จัดการ error จาก Firestore
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Firestore Error: ${e.message}')),
+      );
+    } catch (e) {
+      // จัดการ error อื่นๆ
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {

@@ -21,14 +21,14 @@ class EditPromotionScreen extends StatefulWidget {
 }
 
 class _EditPromotionScreenState extends State<EditPromotionScreen> {
-  List<Uint8List> _images = []; // เก็บข้อมูลภาพในรูปแบบ Uint8List
+  List<Uint8List> _images = []; 
   bool _isLoading = false;
   final PageController _previewController = PageController();
   int _currentPage = 0;
-  String? _restaurantId; // ตัวแปรสำหรับเก็บ document ID ของร้านอาหาร
+  String? _restaurantId; 
   final TextEditingController _manualIdController = TextEditingController();
   bool _showManualInput = false;
-  String _errorMessage = ''; // เก็บข้อความผิดพลาด
+  String _errorMessage = ''; 
 
   @override
   void initState() {
@@ -36,19 +36,16 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
     _determineRestaurantId();
   }
 
-  // ฟังก์ชันค้นหา document ID ของร้านอาหาร
   Future<void> _determineRestaurantId() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // 1. ตรวจสอบผู้ใช้ที่ล็อกอินอยู่
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         print('📱 ผู้ใช้ล็อกอินอยู่: ${currentUser.uid}');
         
-        // 2. ดึงข้อมูล partner จาก Firestore
         DocumentSnapshot partnerDoc = await FirebaseFirestore.instance
             .collection('partners')
             .doc(currentUser.uid)
@@ -57,12 +54,10 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
         if (partnerDoc.exists) {
           Map<String, dynamic> partnerData = partnerDoc.data() as Map<String, dynamic>;
           
-          // 3. ถ้าพบข้อมูล partner และมี restaurantId
           if (partnerData.containsKey('restaurantId') && partnerData['restaurantId'] != null) {
             String docId = partnerData['restaurantId'] as String;
             print('📱 พบ document ID ของร้านอาหารจาก partner: $docId');
             
-            // 4. ตรวจสอบว่า document ID นี้มีอยู่จริงในคอลเลกชัน restaurants
             DocumentSnapshot restaurantDoc = await FirebaseFirestore.instance
                 .collection('restaurants')
                 .doc(docId)
@@ -74,10 +69,8 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
                 _restaurantId = docId;
               });
               
-              // บันทึกลง SharedPreferences
               await _saveRestaurantId(docId);
               
-              // โหลดข้อมูลโปรโมชั่นจากร้านอาหาร
               await _loadExistingPromotions();
               return;
             } else {
@@ -87,16 +80,12 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
         }
       }
       
-      // ถ้าไม่สามารถหา document ID จาก partner ได้ ให้ลองวิธีอื่นๆ
-      
-      // 1. ลองโหลด restaurant ID จาก SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       String? savedId = prefs.getString('current_restaurant_id');
       
       if (savedId != null && savedId.isNotEmpty) {
         print('📱 พบ restaurant ID ที่บันทึกไว้: $savedId');
         
-        // ตรวจสอบว่า ID นี้มีอยู่จริงในฐานข้อมูล
         DocumentSnapshot restaurantDoc = await FirebaseFirestore.instance
             .collection('restaurants')
             .doc(savedId)
@@ -114,7 +103,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
         }
       }
       
-      // 2. ถ้ามี restaurantId ที่ส่งมาโดยตรง ให้ใช้ค่านั้น
       if (widget.restaurantId != null) {
         print('📱 ใช้ restaurant ID ที่ส่งมาจาก props: ${widget.restaurantId}');
         setState(() {
@@ -125,7 +113,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
         return;
       } 
       
-      // 3. ถ้าไม่มี restaurantId แต่มี restaurantData ให้ลองหาจาก restaurantData
       if (widget.restaurantData != null) {
         print('📱 ตรวจสอบ restaurantData: ${widget.restaurantData}');
         
@@ -152,7 +139,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
         }
       }
       
-      // 4. ลองหา restaurant ID จาก settings collection
       try {
         DocumentSnapshot settingsDoc = await FirebaseFirestore.instance
             .collection('settings')
@@ -178,7 +164,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
       
       print('⚠️ ไม่พบ restaurant document ID จากทุกแหล่งข้อมูล');
       
-      // ถ้าไม่พบจากทุกวิธีข้างต้นให้แสดง UI ให้กรอก ID เอง
       setState(() {
         _showManualInput = true;
       });
@@ -186,7 +171,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
     } catch (e) {
       print('❌ เกิดข้อผิดพลาดในการหา restaurant ID: $e');
       
-      // แสดง UI ให้กรอก ID เอง
       setState(() {
         _showManualInput = true;
       });
@@ -198,7 +182,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
     }
   }
 
-  // บันทึก restaurantId ลง SharedPreferences
   Future<void> _saveRestaurantId(String id) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -209,7 +192,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
     }
   }
 
-  // ฟังก์ชันใหม่สำหรับรับ ID ที่กรอกเอง
   void _applyManualId() async {
     String id = _manualIdController.text.trim();
     if (id.isEmpty) {
@@ -219,7 +201,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
       return;
     }
     
-    // ตรวจสอบว่า document ID นี้มีอยู่จริงใน restaurants collection
     try {
       DocumentSnapshot restaurantDoc = await FirebaseFirestore.instance
           .collection('restaurants')
@@ -246,7 +227,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
     }
   }
 
-  // โหลดโปรโมชั่นที่มีอยู่แล้วจาก Firestore
   Future<void> _loadExistingPromotions() async {
   if (_restaurantId == null) return;
   
@@ -277,7 +257,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
           return;
         }
         
-        // แปลง base64 string เป็น Uint8List
         List<Uint8List> loadedImages = [];
         for (var base64Image in promotionList) {
           try {
@@ -326,9 +305,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
   }
 }
 
-// เพิ่มฟังก์ชันใหม่เพื่อตรวจสอบรูปแบบข้อมูลโปรโมชันเก่า
 void _checkLegacyPromotionFormat(Map<String, dynamic> data) {
-  // ตรวจสอบรูปแบบข้อมูลอื่นๆ ที่อาจใช้ในรุ่นเก่า
   if (data.containsKey('promotionImageRefs')) {
     print('📱 พบข้อมูลในรูปแบบ promotionImageRefs จะลองโหลดจาก collection อื่น');
     _loadPromotionFromReferences(data['promotionImageRefs']);
@@ -348,7 +325,6 @@ void _checkLegacyPromotionFormat(Map<String, dynamic> data) {
   }
 }
 
-// เพิ่มฟังก์ชันใหม่เพื่อโหลดรูปภาพจาก references
 Future<void> _loadPromotionFromReferences(List<dynamic> references) async {
   try {
     List<Uint8List> loadedImages = [];
@@ -383,7 +359,6 @@ Future<void> _loadPromotionFromReferences(List<dynamic> references) async {
   }
 }
   
-  // ฟังก์ชันล้างข้อมูลที่บันทึกไว้
   Future<void> _clearSavedId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -402,46 +377,43 @@ Future<void> _loadPromotionFromReferences(List<dynamic> references) async {
     }
   }
 
-  // ฟังก์ชันในการเลือกภาพจากเครื่อง
   Future<void> _pickImage(int index) async {
     final ImagePicker _picker = ImagePicker();
     final XFile? pickedFile =
         await _picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes(); // แปลงไฟล์เป็น Uint8List
+      final bytes = await pickedFile.readAsBytes(); 
       setState(() {
         if (index >= 0 && index < _images.length) {
-          _images[index] = bytes; // เปลี่ยนภาพในตำแหน่งที่เลือก
+          _images[index] = bytes; 
         }
       });
     }
   }
 
-  // ฟังก์ชันลบภาพจาก _images
   void _removeImage(int index) {
     setState(() {
-      _images.removeAt(index); // ลบภาพตามดัชนีที่เลือก
+      _images.removeAt(index); 
       if (_currentPage >= _images.length) {
         _currentPage = _images.isEmpty ? 0 : _images.length - 1;
       }
     });
   }
 
-  // ฟังก์ชันอัปโหลดภาพใหม่
   void _uploadImage() async {
     final ImagePicker _picker = ImagePicker();
     final XFile? pickedFile =
         await _picker.pickImage(
           source: ImageSource.gallery,
-          maxWidth: 1200, // จำกัดขนาดภาพ
-          maxHeight: 1200, // จำกัดขนาดภาพ
-          imageQuality: 85 // ลดคุณภาพลงเล็กน้อยเพื่อลดขนาดไฟล์
+          maxWidth: 1200, 
+          maxHeight: 1200, 
+          imageQuality: 85 
         );
 
     if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes(); // แปลงไฟล์เป็น Uint8List
-      // ตรวจสอบขนาดไฟล์ (ไม่ควรเกิน 1MB)
+      final bytes = await pickedFile.readAsBytes(); 
+      
       if (bytes.length > 1024 * 1024) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('รูปภาพมีขนาดใหญ่เกินไป กรุณาเลือกรูปภาพขนาดเล็กกว่านี้')),
@@ -450,12 +422,12 @@ Future<void> _loadPromotionFromReferences(List<dynamic> references) async {
       }
       
       setState(() {
-        _images.add(bytes); // เพิ่มภาพใหม่เข้าไปใน List
-        // ไปที่ภาพใหม่ล่าสุดที่เพิ่มเข้ามา
+        _images.add(bytes); 
+        
         _currentPage = _images.length - 1;
       });
       
-      // ใช้ Future.delayed เพื่อให้แน่ใจว่า setState ได้ทำงานและ PageView ได้ถูกสร้างแล้ว
+      
       if (_images.length > 1) {
         Future.delayed(Duration(milliseconds: 100), () {
           if (_previewController.hasClients) {
@@ -470,7 +442,7 @@ Future<void> _loadPromotionFromReferences(List<dynamic> references) async {
     }
   }
 
-  // บันทึกโปรโมชั่นไปยัง Firestore
+  
   Future<void> _savePromotions() async {
   if (_restaurantId == null || _images.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -485,7 +457,7 @@ Future<void> _loadPromotionFromReferences(List<dynamic> references) async {
   });
   
   try {
-    // 1. ตรวจสอบขนาดของข้อมูล
+    
     double totalSizeKB = 0;
     List<String> base64Images = [];
     
@@ -497,11 +469,11 @@ Future<void> _loadPromotionFromReferences(List<dynamic> references) async {
     
     print('💾 ขนาดข้อมูลทั้งหมด: ${totalSizeKB.toStringAsFixed(2)} KB');
     
-    if (totalSizeKB > 900) {  // 900KB ให้มี margin สำหรับข้อมูลอื่นๆ
+    if (totalSizeKB > 900) {  
       throw Exception("ข้อมูลมีขนาดใหญ่เกินไป (${totalSizeKB.toStringAsFixed(2)} KB) เกินจำกัด 1MB ของ Firestore");
     }
 
-    // 2. ทดสอบการอัปเดตด้วยวิธีง่ายที่สุดก่อน - ใช้ update แทน set+merge
+    
     print('📤 กำลังอัปเดตข้อมูล...');
     await FirebaseFirestore.instance
         .collection('restaurants')
@@ -522,18 +494,18 @@ Future<void> _loadPromotionFromReferences(List<dynamic> references) async {
       _errorMessage = e.toString();
     });
     
-    // ถ้ายังเกิดข้อผิดพลาด ลองวิธีที่ 2: แยกเก็บรูปทีละรูป
+    
     try {
       print('🔄 ลองวิธีที่ 2: แยกเก็บรูปทีละรูป');
       
-      // สร้าง collection ใหม่สำหรับเก็บรูปโปรโมชัน
+      
       List<String> imageRefs = [];
       
       for (int i = 0; i < _images.length; i++) {
         String imageId = '${_restaurantId}_promo_${DateTime.now().millisecondsSinceEpoch}_$i';
         String base64Image = base64Encode(_images[i]);
         
-        // บันทึกรูปในคอลเลกชัน promotion_images
+        
         await FirebaseFirestore.instance
             .collection('promotion_images')
             .doc(imageId)
@@ -547,7 +519,7 @@ Future<void> _loadPromotionFromReferences(List<dynamic> references) async {
         print('✅ บันทึกรูปที่ ${i+1}/${_images.length} สำเร็จ');
       }
       
-      // อัปเดตเฉพาะ references ในร้านอาหาร
+      
       await FirebaseFirestore.instance
           .collection('restaurants')
           .doc(_restaurantId)
@@ -577,7 +549,7 @@ Future<void> _loadPromotionFromReferences(List<dynamic> references) async {
   }
 }
 
-// เพิ่มฟังก์ชันใหม่เพื่อบันทึกข้อมูลไว้ในแอปโดยไม่ต้องโหลดใหม่
+
 void _savePromotionLocally(List<String> base64Images) {
   try {
     List<Uint8List> newImages = [];
@@ -594,7 +566,7 @@ void _savePromotionLocally(List<String> base64Images) {
 
   @override
   Widget build(BuildContext context) {
-    // ถ้าต้องแสดงช่องกรอก ID เอง
+    
     if (_showManualInput) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -673,7 +645,7 @@ void _savePromotionLocally(List<String> base64Images) {
       );
     }
     
-    // หน้าจอหลัก
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -684,7 +656,7 @@ void _savePromotionLocally(List<String> base64Images) {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // เพิ่มปุ่มบันทึก
+          
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: TextButton(
@@ -717,21 +689,21 @@ void _savePromotionLocally(List<String> base64Images) {
                         fontWeight: FontWeight.normal,
                         color: Colors.black),
                   ),
-                  // แสดง document ID ของร้านอาหาร (แบบย่อ)
+                  
                   Row(
                     children: [
-                      // ใช้ Flexible เพื่อให้ข้อความอยู่ในกรอบ
+                      
                       Flexible(
                         child: Text(
                           "ID: ${_getShortenedId()}",
-                          overflow: TextOverflow.ellipsis, // ตัดข้อความยาวเกินไป
+                          overflow: TextOverflow.ellipsis, 
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
                           ),
                         ),
                       ),
-                      // ปุ่มล้างข้อมูล
+                      
                       IconButton(
                         iconSize: 18,
                         constraints: BoxConstraints(),
@@ -743,7 +715,7 @@ void _savePromotionLocally(List<String> base64Images) {
                     ],
                   ),
                   
-                  // แสดงข้อความผิดพลาด (ถ้ามี)
+                  
                   if (_errorMessage.isNotEmpty)
                     Container(
                       margin: EdgeInsets.only(top: 8),
@@ -762,16 +734,16 @@ void _savePromotionLocally(List<String> base64Images) {
                     ),
                     
                   const SizedBox(height: 20),
-                  // ปรับให้ปุ่ม Upload Image อยู่ข้างบน
+                  
                   _buildUploadImageSection(),
                   const SizedBox(height: 20),
                   
-                  // แสดงพรีวิวแบบ PageView
+                  
                   _buildImagePreviewSection(),
                   
                   const SizedBox(height: 10),
                   
-                  // แสดงรายละเอียดของรูปปัจจุบัน
+                  
                   if (_images.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -787,7 +759,7 @@ void _savePromotionLocally(List<String> base64Images) {
                           ),
                           Row(
                             children: [
-                              // ปุ่มเปลี่ยนรูป
+                              
                               _buildActionButton(
                                 "เปลี่ยนรูป",
                                 Icons.edit,
@@ -795,7 +767,7 @@ void _savePromotionLocally(List<String> base64Images) {
                                 () => _pickImage(_currentPage),
                               ),
                               const SizedBox(width: 10),
-                              // ปุ่มลบรูป
+                              
                               _buildActionButton(
                                 "ลบรูป",
                                 Icons.delete,
@@ -813,7 +785,7 @@ void _savePromotionLocally(List<String> base64Images) {
     );
   }
   
-  // ฟังก์ชัน Helper สำหรับย่อ ID
+  
   String _getShortenedId() {
     if (_restaurantId == null) return 'ไม่พบรหัสร้านอาหาร';
     if (_restaurantId!.length <= 15) return _restaurantId!;
@@ -843,7 +815,7 @@ void _savePromotionLocally(List<String> base64Images) {
           ),
           const SizedBox(height: 10),
           ElevatedButton(
-            onPressed: _uploadImage, // เมื่อกดจะเรียกฟังก์ชัน pick image
+            onPressed: _uploadImage, 
             style: ElevatedButton.styleFrom(
               foregroundColor: Color(0xFF8B2323), backgroundColor: Colors.white,
               side: BorderSide(color: Color(0xFF8B2323), width: 1.5),
@@ -851,7 +823,7 @@ void _savePromotionLocally(List<String> base64Images) {
                 borderRadius: BorderRadius.circular(10),
               ),
               padding: const EdgeInsets.symmetric(vertical: 15),
-              minimumSize: Size(200, 50), // ปรับขนาดให้ปุ่มไม่ยาวเกินไป
+              minimumSize: Size(200, 50), 
             ),
             child: const Text(
               "Upload Image",
@@ -863,7 +835,7 @@ void _savePromotionLocally(List<String> base64Images) {
     );
   }
 
-  // สร้างส่วนพรีวิวรูปภาพแบบ PageView
+  
   Widget _buildImagePreviewSection() {
     if (_images.isEmpty) {
       return Container(
@@ -922,7 +894,7 @@ void _savePromotionLocally(List<String> base64Images) {
           ),
         ),
         const SizedBox(height: 10),
-        // เพิ่ม page indicator
+        
         if (_images.length > 1)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -944,7 +916,7 @@ void _savePromotionLocally(List<String> base64Images) {
     );
   }
 
-  // สร้างปุ่มสำหรับการจัดการรูปภาพ
+  
   Widget _buildActionButton(
       String label, IconData icon, Color color, VoidCallback onPressed) {
     return InkWell(

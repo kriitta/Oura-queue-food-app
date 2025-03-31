@@ -16,7 +16,7 @@ class _RewardPageState extends State<RewardPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   List<Map<String, dynamic>> redemptionHistory = [];
-  int availableCoins = 0; // เริ่มต้นที่ 0 และจะโหลดจาก Firebase
+  int availableCoins = 0; 
   bool _isLoading = true;
   StreamSubscription<DocumentSnapshot>? _rewardStatusListener;
 
@@ -28,12 +28,10 @@ class _RewardPageState extends State<RewardPage> {
 
   @override
   void dispose() {
-    // ถ้ามีการติดตามสถานะ ให้ยกเลิกเมื่อออกจากหน้าจอ
     _rewardStatusListener?.cancel();
     super.dispose();
   }
 
-  // โหลด coins และประวัติการแลกรางวัลของผู้ใช้
   Future<void> _loadUserCoinsAndHistory() async {
     setState(() {
       _isLoading = true;
@@ -43,7 +41,6 @@ class _RewardPageState extends State<RewardPage> {
       User? currentUser = _auth.currentUser;
 
       if (currentUser != null) {
-        // 1. โหลดข้อมูล coins จากเอกสารของผู้ใช้
         DocumentSnapshot userDoc =
             await _firestore.collection('users').doc(currentUser.uid).get();
 
@@ -51,13 +48,11 @@ class _RewardPageState extends State<RewardPage> {
           Map<String, dynamic> userData =
               userDoc.data() as Map<String, dynamic>;
 
-          // ตรวจสอบว่าผู้ใช้มีฟิลด์ coins หรือไม่
           if (userData.containsKey('coins')) {
             setState(() {
               availableCoins = userData['coins'] ?? 0;
             });
           } else {
-            // ถ้าไม่มีฟิลด์ coins ให้เพิ่มฟิลด์นี้พร้อมตั้งค่าเริ่มต้นเป็น 10
             await _firestore
                 .collection('users')
                 .doc(currentUser.uid)
@@ -68,7 +63,6 @@ class _RewardPageState extends State<RewardPage> {
             });
           }
 
-          // 2. โหลดประวัติการแลกรางวัล
           QuerySnapshot historySnapshot = await _firestore
               .collection('users')
               .doc(currentUser.uid)
@@ -84,7 +78,7 @@ class _RewardPageState extends State<RewardPage> {
               'coins': data['coins'] ?? '',
               'rewardId': data['rewardId'] ?? '',
               'date': _formatDate(data['redeemedAt']),
-              'id': doc.id, // เก็บ ID ของเอกสารไว้ด้วย
+              'id': doc.id, 
             };
             historyList.add(historyItem);
           }
@@ -106,8 +100,6 @@ class _RewardPageState extends State<RewardPage> {
     }
   }
 
-  // เพิ่มประวัติการแลกรางวัลทั้งใน state และ Firestore
-  // เพิ่มประวัติการแลกรางวัลทั้งใน state และ Firestore
   Future<bool> addRedemptionHistory(
       String title, String coins, String rewardId, String date) async {
     User? currentUser = _auth.currentUser;
@@ -115,9 +107,7 @@ class _RewardPageState extends State<RewardPage> {
 
     try {
       int deductedCoins = int.parse(coins.replaceAll(RegExp(r'[^0-9]'), '')) *
-          -1; // แปลงเป็นตัวเลข
-
-      // ตรวจสอบอีกครั้งว่ามี coins เพียงพอ (double check)
+          -1; 
       DocumentSnapshot userDoc =
           await _firestore.collection('users').doc(currentUser.uid).get();
 
@@ -127,10 +117,9 @@ class _RewardPageState extends State<RewardPage> {
       int currentCoins = userData['coins'] ?? 0;
 
       if (currentCoins < -deductedCoins) {
-        return false; // coins ไม่เพียงพอ
+        return false; 
       }
 
-      // สร้างข้อมูลประวัติการแลกรางวัลก่อน
       Map<String, dynamic> historyData = {
         'title': title,
         'coins': coins,
@@ -138,18 +127,14 @@ class _RewardPageState extends State<RewardPage> {
         'redeemedAt': Timestamp.now(),
       };
 
-      // กำหนด timeout สำหรับ transaction เพื่อป้องกันการค้าง
       bool isCompleted = false;
 
-      // แทนการใช้ transaction ที่อาจมีปัญหา ให้แยกเป็น 2 ขั้นตอน
       try {
-        // 1. อัพเดทจำนวน coins ก่อน
         await _firestore
             .collection('users')
             .doc(currentUser.uid)
             .update({'coins': FieldValue.increment(deductedCoins)});
 
-        // 2. เพิ่มประวัติการแลกรางวัล
         await _firestore
             .collection('users')
             .doc(currentUser.uid)
@@ -159,7 +144,6 @@ class _RewardPageState extends State<RewardPage> {
         isCompleted = true;
       } catch (e) {
         print('Error during reward transaction: $e');
-        // ถ้าเกิดข้อผิดพลาด ลองคืน coins ให้ผู้ใช้
         try {
           await _firestore
               .collection('users')
@@ -171,18 +155,14 @@ class _RewardPageState extends State<RewardPage> {
         return false;
       }
 
-      // ถ้า timeout หรือไม่สำเร็จ ให้ return false
       if (!isCompleted) {
         return false;
       }
 
-      // 3. อัพเดท UI หลังจากทำรายการสำเร็จ
       if (context.mounted) {
         setState(() {
-          // อัพเดท coins ในแอพ
           availableCoins += deductedCoins;
 
-          // เพิ่มประวัติลงใน list ที่แสดงใน UI
           redemptionHistory.insert(0, {
             'title': title,
             'coins': coins,
@@ -204,7 +184,6 @@ class _RewardPageState extends State<RewardPage> {
     }
   }
 
-  // แปลง timestamp เป็นข้อความวันที่
   String _formatDate(dynamic timestamp) {
     if (timestamp == null) return 'N/A';
 
@@ -233,7 +212,6 @@ class _RewardPageState extends State<RewardPage> {
     }
   }
 
-  // Show history dialog
   void _showHistoryDialog() {
     showDialog(
       context: context,
@@ -247,7 +225,7 @@ class _RewardPageState extends State<RewardPage> {
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           content: SizedBox(
-            height: 300, // เพิ่มความสูงให้มากขึ้น
+            height: 300, 
             width: 300,
             child: redemptionHistory.isEmpty
                 ? const Center(
@@ -270,7 +248,6 @@ class _RewardPageState extends State<RewardPage> {
                           style: const TextStyle(color: Color(0xFF8B2323)),
                         ),
                         onTap: () {
-                          // Show Reward ID
                           showDialog(
                             context: context,
                             builder: (context) {
@@ -309,11 +286,9 @@ class _RewardPageState extends State<RewardPage> {
   }
 
   void _showRewardSuccessDialog(BuildContext context, String finalRewardId, String rewardHistoryId, User currentUser) {
-  // สร้าง ValueNotifier สำหรับติดตามสถานะ
   ValueNotifier<bool> isConfirmed = ValueNotifier<bool>(false);
   ValueNotifier<String> statusMessage = ValueNotifier<String>('Waiting for restaurant staff confirmation...');
 
-  // ติดตั้ง listener สำหรับติดตามการเปลี่ยนแปลงสถานะ
   if (rewardHistoryId.isNotEmpty) {
     _rewardStatusListener = _firestore
         .collection('users')
@@ -325,17 +300,13 @@ class _RewardPageState extends State<RewardPage> {
       if (snapshot.exists) {
         Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
 
-        // ถ้าสถานะถูกเปลี่ยนเป็น confirmed
         if (data['status'] == 'confirmed') {
           isConfirmed.value = true;
           statusMessage.value = 'Your reward has been confirmed!';
 
-          // แสดง dialog สำเร็จหลังจากรอสักครู่
           Future.delayed(const Duration(seconds: 1), () {
-            // ยกเลิกการติดตาม
             _rewardStatusListener?.cancel();
 
-            // รีโหลดข้อมูลล่าสุด
             _loadUserCoinsAndHistory();
           });
         }
@@ -361,10 +332,9 @@ class _RewardPageState extends State<RewardPage> {
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.grey),
                       onPressed: () {
-                        // ยกเลิกการติดตาม
                         _rewardStatusListener?.cancel();
                         Navigator.of(dialogContext).pop();
-                        _loadUserCoinsAndHistory(); // รีเฟรชข้อมูล
+                        _loadUserCoinsAndHistory();
                       },
                     ),
                   ],
@@ -396,7 +366,7 @@ class _RewardPageState extends State<RewardPage> {
                         ElevatedButton(
                           onPressed: () {
                             Navigator.of(dialogContext).pop();
-                            _loadUserCoinsAndHistory(); // รีเฟรชข้อมูล
+                            _loadUserCoinsAndHistory(); 
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF8B2323),
@@ -417,7 +387,6 @@ class _RewardPageState extends State<RewardPage> {
   );
 }
 
-  // Show reward popup
   void _showRewardPopup(BuildContext context, String title, String coins,
       {String? imagePath,
       IconData? icon,
@@ -436,7 +405,6 @@ class _RewardPageState extends State<RewardPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Display reward image/icon
                 if (imagePath != null && imagePath.isNotEmpty)
                   Container(
                     width: 100,
@@ -527,7 +495,6 @@ class _RewardPageState extends State<RewardPage> {
   onPressed: () async {
     int rewardCoins = int.parse(coins.split(' ')[0]);
     if (availableCoins >= rewardCoins) {
-      // แสดง loading dialog ทันทีเพื่อป้องกันการกดหลายครั้ง
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -544,25 +511,20 @@ class _RewardPageState extends State<RewardPage> {
       );
 
       try {
-        // เก็บตัวแปรที่จำเป็น
         String currentDate = _getCurrentDate();
         String finalRewardId = generateRandomRewardId(rewardId);
         User? currentUser = _auth.currentUser;
         
         if (currentUser == null) {
-          // ปิด loading dialog
           Navigator.of(context).pop();
-          // แจ้งเตือนว่าไม่มีการล็อกอิน
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('กรุณาล็อกอินก่อนแลกรางวัล')),
           );
           return;
         }
 
-        // ใช้ transaction เพื่อให้แน่ใจว่าทั้งการหักเหรียญและการสร้างรายการแลกของทำงานพร้อมกัน
         bool success = await FirebaseFirestore.instance.runTransaction<bool>(
           (transaction) async {
-            // 1. ตรวจสอบเหรียญอีกครั้ง
             DocumentSnapshot userDoc = await transaction.get(
               _firestore.collection('users').doc(currentUser.uid)
             );
@@ -575,17 +537,15 @@ class _RewardPageState extends State<RewardPage> {
             int currentCoins = userData['coins'] ?? 0;
             
             if (currentCoins < rewardCoins) {
-              return false; // เหรียญไม่พอ
+              return false; 
             }
             
-            // 2. สร้างข้อมูลประวัติการแลกรางวัล
             DocumentReference historyRef = _firestore
                 .collection('users')
                 .doc(currentUser.uid)
                 .collection('rewardHistory')
-                .doc(); // สร้าง ID ใหม่อัตโนมัติ
+                .doc(); 
             
-            // 3. อัปเดตข้อมูลในฐานข้อมูล (ทั้งการหักเหรียญและสร้างประวัติ)
             transaction.update(
               _firestore.collection('users').doc(currentUser.uid),
               {'coins': currentCoins - rewardCoins}
@@ -603,26 +563,21 @@ class _RewardPageState extends State<RewardPage> {
             
             return true;
           },
-          // เพิ่ม timeout ที่นานขึ้นเพื่อรองรับการเชื่อมต่อที่อาจช้า
           timeout: const Duration(seconds: 10),
         ).catchError((error) {
           print('Transaction failed: $error');
           return false;
         });
 
-        // ปิด dialog ทั้งหมด (ทั้ง loading dialog และ confirm dialog)
-        Navigator.of(context).pop(); // ปิด loading dialog
-        Navigator.of(context).pop(); // ปิด confirm dialog
+        Navigator.of(context).pop(); 
+        Navigator.of(context).pop(); 
 
         if (success) {
-          // อัปเดต UI แสดงคะแนนที่ลดลง
           setState(() {
             availableCoins -= rewardCoins;
           });
 
-          // แสดงข้อมูลการแลกสำเร็จ
           if (context.mounted) {
-            // ค้นหา rewardHistoryId จาก Firestore
             QuerySnapshot historyQuery = await _firestore
                 .collection('users')
                 .doc(currentUser.uid)
@@ -639,7 +594,6 @@ class _RewardPageState extends State<RewardPage> {
             _showRewardSuccessDialog(context, finalRewardId, rewardHistoryId, currentUser);
           }
         } else {
-          // กรณีไม่สำเร็จ
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('ไม่สามารถแลกรางวัลได้ กรุณาลองใหม่อีกครั้ง')),
@@ -647,7 +601,6 @@ class _RewardPageState extends State<RewardPage> {
           }
         }
       } catch (e) {
-        // ปิด loading dialog ในกรณีเกิดข้อผิดพลาด
         Navigator.of(context).pop();
         
         print('Error redeeming reward: $e');
@@ -658,7 +611,6 @@ class _RewardPageState extends State<RewardPage> {
         }
       }
     } else {
-      // Coins ไม่เพียงพอ
       showDialog(
         context: context,
         builder: (context) {
@@ -700,7 +652,6 @@ class _RewardPageState extends State<RewardPage> {
     );
   }
 
-  // สร้างข้อความวันที่ปัจจุบัน
   String _getCurrentDate() {
     DateTime now = DateTime.now();
     List<String> months = [
@@ -768,7 +719,7 @@ class _RewardPageState extends State<RewardPage> {
               child: CircularProgressIndicator(color: Color(0xFF8B2323)),
             )
           : RefreshIndicator(
-              onRefresh: _loadUserCoinsAndHistory, // เพิ่ม refresh pull-down
+              onRefresh: _loadUserCoinsAndHistory, 
               color: const Color(0xFF8B2323),
               child: Column(
                 children: [
@@ -839,7 +790,6 @@ class _RewardPageState extends State<RewardPage> {
                       ),
                     ),
                   ),
-                  // แสดงข้อความบรรทัดล่างเพื่อบอกว่าสามารถดึงลงเพื่อรีเฟรชได้
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
@@ -863,7 +813,7 @@ class RewardCard extends StatelessWidget {
   final String rewardId;
   final bool useAsset;
   final bool useCustomIcon;
-  final Function(String) onRedemption; // Callback for redemption
+  final Function(String) onRedemption; 
   final Function(BuildContext, String, String,
       {String? imagePath,
       IconData? icon,
@@ -880,8 +830,8 @@ class RewardCard extends StatelessWidget {
     required this.rewardId,
     this.useAsset = false,
     this.useCustomIcon = false,
-    required this.onRedemption, // callback to add redemption to history
-    required this.showRewardPopup, // callback to show reward popup
+    required this.onRedemption, 
+    required this.showRewardPopup,
   });
 
   @override
@@ -889,8 +839,6 @@ class RewardCard extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         String newRewardId = generateRandomRewardId(rewardId);
-        // ไม่เรียก onRedemption ที่นี่อีกต่อไป
-        // แต่จะเรียกใน showRewardPopup เมื่อผู้ใช้ยืนยันเท่านั้น
         showRewardPopup(
           context,
           title,

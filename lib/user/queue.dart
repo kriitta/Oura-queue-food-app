@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../system/notification_service.dart';
 import '../system/queue_monitor_service.dart';
 
-class QueuePage extends StatefulWidget { // เปลี่ยนเป็น StatefulWidget
+class QueuePage extends StatefulWidget { 
   const QueuePage({super.key});
 
   @override
@@ -21,20 +21,16 @@ class _QueuePageState extends State<QueuePage> with WidgetsBindingObserver {
 void initState() {
   super.initState();
   WidgetsBinding.instance.addObserver(this);
-  // เริ่มติดตามคิวเมื่อเปิดหน้านี้
   _startQueueMonitoring();
   
-  // เพิ่มการเรียกใช้ฟังก์ชันซิงค์คิวจองล่วงหน้า
   syncReservationQueues();
 }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // เริ่มหรือหยุดการติดตามคิวตามสถานะของแอพ
     if (state == AppLifecycleState.resumed) {
       _startQueueMonitoring();
     } else if (state == AppLifecycleState.paused) {
-      // แอพเข้าสู่พื้นหลัง - ยังคงติดตามคิวเพื่อให้ได้รับการแจ้งเตือน
     }
   }
 
@@ -49,13 +45,11 @@ void initState() {
     String status = data['status'] ?? '';
     bool isReservation = data['isReservation'] ?? false;
     
-    // ถ้าเป็นการจองล่วงหน้า (isReservation = true) ไม่ต้องลบข้อมูล
     if (isReservation) {
       print('🔒 ไม่ลบข้อมูลการจอง: $queueCode (status: $status)');
-      continue; // ข้ามไปคิวถัดไป
+      continue; 
     }
     
-    // สำหรับคิวแบบ walk-in เท่านั้นที่จะลบถ้าไม่ใช่สถานะ waiting
     if (status != 'waiting') {
       await FirebaseFirestore.instance
           .collection('users')
@@ -64,23 +58,20 @@ void initState() {
           .doc(doc.id)
           .delete();
       print('Deleted non-waiting queue: $queueCode from user myQueue');
-      continue; // ข้ามไปคิวถัดไป
+      continue; 
     }
     
     if (queueCode.isEmpty || restaurantId.isEmpty) continue;
     
-    // ตรวจสอบว่าคิวนี้ยังมีอยู่ในฐานข้อมูลหลักหรือไม่ (เฉพาะสำหรับคิวแบบ walk-in)
     QuerySnapshot mainQueueSnapshot = await FirebaseFirestore.instance
         .collection('queues')
         .where('queueCode', isEqualTo: queueCode)
         .where('restaurantId', isEqualTo: restaurantId)
         .get();
         
-    // ถ้าไม่พบคิวในฐานข้อมูลหลัก หรือคิวในฐานข้อมูลหลักไม่ได้อยู่ในสถานะ waiting แล้ว ให้ลบออกจาก myQueue
     if (mainQueueSnapshot.docs.isEmpty) {
       await _deleteQueueFromMyQueue(currentUser.uid, doc.id, queueCode);
     } else {
-      // ตรวจสอบสถานะของคิวในฐานข้อมูลหลัก
       bool shouldDelete = true;
       for (var mainDoc in mainQueueSnapshot.docs) {
         if (mainDoc['status'] == 'waiting') {
@@ -101,7 +92,6 @@ Future<void> syncReservationQueues() async {
   if (currentUser == null) return;
   
   try {
-    // ดึงข้อมูลคิวจองล่วงหน้าจาก queues collection ที่เป็นของผู้ใช้นี้
     QuerySnapshot reservationSnapshot = await FirebaseFirestore.instance
         .collection('queues')
         .where('userId', isEqualTo: currentUser.uid)
@@ -113,7 +103,6 @@ Future<void> syncReservationQueues() async {
     
     if (reservationSnapshot.docs.isEmpty) return;
     
-    // ดึงข้อมูลคิวที่มีอยู่แล้วใน myQueue ของผู้ใช้
     QuerySnapshot myQueueSnapshot = await FirebaseFirestore.instance
         .collection('users')
         .doc(currentUser.uid)
@@ -121,26 +110,21 @@ Future<void> syncReservationQueues() async {
         .where('isReservation', isEqualTo: true)
         .get();
     
-    // สร้าง Set ของ queueCode ที่มีอยู่แล้วใน myQueue
     Set<String> existingQueueCodes = myQueueSnapshot.docs
         .map((doc) => (doc.data() as Map<String, dynamic>)['queueCode'] as String)
         .toSet();
     
-    // ตรวจสอบและเพิ่มคิวที่ยังไม่มีใน myQueue
     int addedCount = 0;
     for (var doc in reservationSnapshot.docs) {
       Map<String, dynamic> queueData = doc.data() as Map<String, dynamic>;
       String queueCode = queueData['queueCode'] ?? '';
       
-      // ถ้าคิวนี้ยังไม่มีใน myQueue ให้เพิ่มเข้าไป
       if (queueCode.isNotEmpty && !existingQueueCodes.contains(queueCode)) {
-        // ดึงข้อมูลร้านอาหารเพื่อเพิ่มข้อมูลสำหรับการแสดงผล
         DocumentSnapshot restaurantDoc = await FirebaseFirestore.instance
             .collection('restaurants')
             .doc(queueData['restaurantId'])
             .get();
         
-        // สร้าง map ข้อมูลที่จะบันทึกลงใน myQueue
         Map<String, dynamic> myQueueData = {
           ...queueData,
           'restaurantName': restaurantDoc.exists 
@@ -151,7 +135,6 @@ Future<void> syncReservationQueues() async {
               : 'ไม่ระบุสถานที่',
         };
         
-        // บันทึกลงใน myQueue ของผู้ใช้
         await FirebaseFirestore.instance
             .collection('users')
             .doc(currentUser.uid)
@@ -165,7 +148,6 @@ Future<void> syncReservationQueues() async {
     
     print('🔄 ซิงค์คิวจองล่วงหน้าเสร็จสิ้น: เพิ่ม $addedCount คิวใหม่');
     
-    // ถ้ามีการเพิ่มข้อมูลใหม่ ให้แสดงแจ้งเตือน
     if (addedCount > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('พบและซิงค์คิวจองล่วงหน้า $addedCount รายการ')),
@@ -181,35 +163,30 @@ Future<void> saveBookingToUserMyQueue(Map<String, dynamic> bookingData) async {
     final userId = bookingData['userId'];
     if (userId == null) return;
     
-    // ดึงข้อมูลร้านอาหารเพื่อเพิ่มข้อมูลสำหรับการแสดงผล
     DocumentSnapshot restaurantDoc = await FirebaseFirestore.instance
         .collection('restaurants')
         .doc(bookingData['restaurantId'])
         .get();
     
-    // สร้าง map ข้อมูลที่จะบันทึกลงใน myQueue
     Map<String, dynamic> myQueueData = {
       ...bookingData,
-      'isReservation': true,  // ตรวจสอบให้แน่ใจว่ามีการตั้งค่านี้
-      'status': bookingData['status'] ?? 'booked', // กำหนดค่าเริ่มต้นเป็น 'booked' ถ้าไม่มีค่า
+      'isReservation': true,  
+      'status': bookingData['status'] ?? 'booked', 
       'restaurantName': restaurantDoc.exists 
           ? (restaurantDoc.data() as Map<String, dynamic>)['name'] ?? 'ร้านอาหาร'
           : 'ร้านอาหาร',
       'restaurantLocation': restaurantDoc.exists 
           ? (restaurantDoc.data() as Map<String, dynamic>)['location'] ?? 'ไม่ระบุสถานที่'
           : 'ไม่ระบุสถานที่',
-      'createdAt': bookingData['createdAt'] ?? Timestamp.now(), // เพิ่มเวลาที่สร้าง
+      'createdAt': bookingData['createdAt'] ?? Timestamp.now(), 
     };
     
-    // ถ้าไม่มี bookingTime ให้เพิ่มเข้าไปด้วยวันและเวลาปัจจุบัน (สำหรับกรณีที่ไม่มีการระบุเวลาจอง)
     if (!myQueueData.containsKey('bookingTime') || myQueueData['bookingTime'] == null) {
-      // สร้างเวลาสำหรับการจองเริ่มต้น (1 ชั่วโมงจากเวลาปัจจุบัน)
       DateTime now = DateTime.now();
       DateTime bookingTime = now.add(const Duration(hours: 1));
       myQueueData['bookingTime'] = Timestamp.fromDate(bookingTime);
     }
     
-    // บันทึกลงใน myQueue ของผู้ใช้
     DocumentReference docRef = await FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
@@ -222,7 +199,7 @@ Future<void> saveBookingToUserMyQueue(Map<String, dynamic> bookingData) async {
     return;
   } catch (e) {
     print('❌ Error saving booking to user myQueue: $e');
-    throw e; // ส่งต่อ error เพื่อให้ฟังก์ชันที่เรียกใช้รับทราบ
+    throw e; 
   }
 }
 
@@ -254,7 +231,6 @@ void _debugBookingQueue(List<DocumentSnapshot> allQueues) {
   }
 }
 
-// แยกฟังก์ชันลบคิวออกมาเพื่อใช้ซ้ำ
 Future<void> _deleteQueueFromMyQueue(String userId, String docId, String queueCode) async {
   await FirebaseFirestore.instance
       .collection('users')
@@ -297,7 +273,7 @@ Widget build(BuildContext context) {
     ),
     body: RefreshIndicator(
       onRefresh: () async {
-        await syncReservationQueues(); // เรียกใช้ฟังก์ชันซิงค์เมื่อ pull-to-refresh
+        await syncReservationQueues();
       },
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -329,7 +305,6 @@ Widget build(BuildContext context) {
     String restaurantId = data['restaurantId'] ?? '';
     bool isReservation = data['isReservation'] ?? false;
     
-    // ตรวจสอบสถานะใน queues collection
     FirebaseFirestore.instance
         .collection('queues')
         .where('queueCode', isEqualTo: queueCode)
@@ -340,21 +315,17 @@ Widget build(BuildContext context) {
             var mainQueueDoc = queueSnapshot.docs.first;
             var mainStatus = mainQueueDoc['status'];
             
-            // แก้ไขเงื่อนไขตรงนี้ เพื่อให้ตรวจสอบทั้งคิว walk-in และคิวจองล่วงหน้า
             bool needsUpdate = false;
             
-            // คิว walk-in สถานะ waiting เปลี่ยนไป
             if (data['status'] == 'waiting' && mainStatus != 'waiting') {
               needsUpdate = true;
             }
             
-            // คิวจองล่วงหน้า (booked) มีการเปลี่ยนสถานะเป็น completed หรือ cancelled
             if (isReservation && data['status'] == 'booked' && 
                 (mainStatus == 'completed' || mainStatus == 'cancelled')) {
               needsUpdate = true;
             }
             
-            // ถ้าจำเป็นต้องอัพเดท
             if (needsUpdate) {
               FirebaseFirestore.instance
                   .collection('users')
@@ -372,22 +343,16 @@ Widget build(BuildContext context) {
 
           var allQueues = snapshot.data!.docs;
           
-          // เรียกใช้ฟังก์ชันทำความสะอาดข้อมูลคิวที่ถูกลบ
           cleanupDeletedQueues(allQueues);
           _debugBookingQueue(allQueues);
 
-            // Separate walk-in and booking queues using isReservation field
             var walkInQueues = allQueues.where((q) {
   final data = q.data() as Map<String, dynamic>;
-  // กรองเฉพาะคิวที่ยังมีสถานะ "waiting" เท่านั้น
   return !(data['isReservation'] ?? false) && (data['status'] == 'waiting');
 }).toList();
 
-// เช่นเดียวกับส่วนกรองคิว Booking
-// เช่นเดียวกับส่วนกรองคิว Booking
 var bookingQueues = allQueues.where((q) {
   final data = q.data() as Map<String, dynamic>;
-  // กรองเฉพาะคิวที่มีสถานะ "booked" เท่านั้น
   return data['isReservation'] == true && (data['status'] == 'booked');
 }).toList();
 
@@ -402,7 +367,6 @@ var bookingQueues = allQueues.where((q) {
                   ),
                   const SizedBox(height: 16),
 
-                  // If no walk-in queues
                   if (walkInQueues.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -412,7 +376,6 @@ var bookingQueues = allQueues.where((q) {
                       ),
                     ),
 
-                  // Display walk-in queues with spacing
                   for (var queue in walkInQueues) ...[
                     QueueCard(data: queue.data() as Map<String, dynamic>),
                     const SizedBox(height: 12),
@@ -426,7 +389,6 @@ var bookingQueues = allQueues.where((q) {
                   ),
                   const SizedBox(height: 16),
 
-                  // If no booking queues
                   if (bookingQueues.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -436,7 +398,6 @@ var bookingQueues = allQueues.where((q) {
                       ),
                     ),
 
-                  // Display booking queues with spacing
                   for (var queue in bookingQueues) ...[
                     BookingCard(data: queue.data() as Map<String, dynamic>),
                     const SizedBox(height: 12),
@@ -465,7 +426,7 @@ class _QueueCardState extends State<QueueCard> with AutomaticKeepAliveClientMixi
   bool _hasSetupStream = false;
 
   @override
-  bool get wantKeepAlive => true; // ช่วยรักษา state เมื่อ scroll
+  bool get wantKeepAlive => true; 
 
   @override
   void initState() {
@@ -476,7 +437,6 @@ class _QueueCardState extends State<QueueCard> with AutomaticKeepAliveClientMixi
   @override
   void didUpdateWidget(QueueCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // ตรวจสอบว่าข้อมูลเปลี่ยนไปหรือไม่
     if (widget.data['restaurantId'] != oldWidget.data['restaurantId'] ||
         (widget.data['timestamp'] != oldWidget.data['timestamp'])) {
       _setupWaitingCountStream();
@@ -488,7 +448,6 @@ class _QueueCardState extends State<QueueCard> with AutomaticKeepAliveClientMixi
     final currentTimestamp = widget.data['timestamp'];
     
     if (restaurantId != null && currentTimestamp is Timestamp) {
-      // ใช้ .where() น้อยลงเพื่อเพิ่มโอกาสในการได้ข้อมูลที่ถูกต้อง
       waitingCountStream = FirebaseFirestore.instance
           .collection('queues')
           .where('restaurantId', isEqualTo: restaurantId)
@@ -499,7 +458,6 @@ class _QueueCardState extends State<QueueCard> with AutomaticKeepAliveClientMixi
             int count = 0;
             
             for (var doc in snapshot.docs) {
-              // ทำการกรองข้อมูลเพิ่มเติมหลังจากได้รับข้อมูล
               final docData = doc.data();
               final isReservation = docData['isReservation'] ?? false;
               
@@ -521,14 +479,13 @@ class _QueueCardState extends State<QueueCard> with AutomaticKeepAliveClientMixi
 
   @override
   void dispose() {
-    // ทำความสะอาด resources
     waitingCountStream = null;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // จำเป็นสำหรับ AutomaticKeepAliveClientMixin
+    super.build(context);
     
     final data = widget.data;
     final title = data['restaurantName'] ?? '';
@@ -536,7 +493,6 @@ class _QueueCardState extends State<QueueCard> with AutomaticKeepAliveClientMixi
     final queueType = data['status'] ?? '';
     final queueCode = data['queueCode'] ?? '';
 
-    // กรณีที่ยังไม่ได้สร้าง stream ให้ลองสร้างอีกครั้ง
     if (!_hasSetupStream) {
       _setupWaitingCountStream();
     }
@@ -623,10 +579,8 @@ class _QueueCardState extends State<QueueCard> with AutomaticKeepAliveClientMixi
                           );
                         }
                         
-                        // ใช้ data หรือเลข 0 ถ้าไม่มีข้อมูล
                         final queueNumber = snapshot.hasData ? '${snapshot.data}' : '-';
                         
-                        // แสดงข้อมูลพร้อม color indicator
                         return Text(
                           queueNumber,
                           style: TextStyle(
@@ -667,7 +621,6 @@ class BookingCard extends StatelessWidget {
         ? (data['bookingTime'] as Timestamp).toDate()
         : null;
 
-    // Format the date and time for display
     final queueNumber = bookingTime != null
         ? "${bookingTime.hour.toString().padLeft(2, '0')}:${bookingTime.minute.toString().padLeft(2, '0')}"
         : 'N/A';
@@ -758,7 +711,6 @@ class BookingCard extends StatelessWidget {
   }
 }
 
-// Helper function for month name conversion
 String _monthName(int month) {
   const months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -805,11 +757,9 @@ Future<void> _showQueuePopup(BuildContext context, Map<String, dynamic> data) as
       ? "${time.day} ${_monthName(time.month)} ${time.year}"
       : 'N/A';
       
-  // สร้าง Stream สำหรับนับจำนวนคนที่รออยู่ก่อน
   Stream<int>? waitingCountStream;
   
   if (restaurantId != null && currentTimestamp != null) {
-    // ปรับปรุง query ให้ไม่ซับซ้อนเกินไป และใช้ listener ที่ดีขึ้น
     waitingCountStream = FirebaseFirestore.instance
         .collection('queues')
         .where('restaurantId', isEqualTo: restaurantId)
@@ -819,7 +769,6 @@ Future<void> _showQueuePopup(BuildContext context, Map<String, dynamic> data) as
           
           for (var doc in snapshot.docs) {
             final docData = doc.data();
-            // กรองข้อมูลหลังจากได้รับมาแล้ว
             final isReservation = docData['isReservation'] ?? false;
             final status = docData['status'];
             
@@ -835,7 +784,6 @@ Future<void> _showQueuePopup(BuildContext context, Map<String, dynamic> data) as
         });
   }
 
-  // ใช้ StatefulBuilder เพื่อให้สามารถอัพเดท UI ในป๊อปอัพได้
   showDialog(
     context: context,
     builder: (context) {
@@ -1040,7 +988,6 @@ Future<void> _showBookingPopup(BuildContext context, Map<String, dynamic> data) 
   final seat = data['numberOfPersons']?.toString() ?? 'N/A';
   final tableType = data['tableType'] ?? 'N/A';
   
-  // Get restaurant image from Firestore
   String? restaurantImageBase64;
   if (data['restaurantId'] != null) {
     final restaurantDoc = await FirebaseFirestore.instance
@@ -1054,7 +1001,6 @@ Future<void> _showBookingPopup(BuildContext context, Map<String, dynamic> data) 
     }
   }
   
-  // Get booking time
   final bookingTime = data['bookingTime'] != null
       ? (data['bookingTime'] as Timestamp).toDate()
       : null;
@@ -1063,7 +1009,6 @@ Future<void> _showBookingPopup(BuildContext context, Map<String, dynamic> data) 
       ? "${bookingTime.hour.toString().padLeft(2, '0')}:${bookingTime.minute.toString().padLeft(2, '0')}"
       : 'N/A';
       
-  // Get creation time
   final createdAt = data['createdAt'] != null
       ? (data['createdAt'] as Timestamp).toDate()
       : null;
@@ -1072,7 +1017,6 @@ Future<void> _showBookingPopup(BuildContext context, Map<String, dynamic> data) 
       ? "${createdAt.day} ${_monthName(createdAt.month)} ${createdAt.year}"
       : 'N/A';
       
-  // Format full booking date and time
   final fullBookingTime = bookingTime != null
       ? "${bookingTime.day} ${_monthName(bookingTime.month)} ${bookingTime.year}"
       : 'N/A';

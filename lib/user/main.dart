@@ -18,7 +18,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  // เริ่มต้นระบบการแจ้งเตือน
   final notificationService = NotificationService();
   await notificationService.init();
   await NotificationService().resetAll();
@@ -139,7 +138,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
   Position? _currentPosition;
   bool _isLocationLoading = true;
   
-  // Add stream subscriptions list to track and dispose of listeners
   List<StreamSubscription> _restaurantSubscriptions = [];
 
   @override
@@ -150,7 +148,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
   
   @override
   void dispose() {
-    // Cancel all stream subscriptions when widget is disposed
     for (var subscription in _restaurantSubscriptions) {
       subscription.cancel();
     }
@@ -158,24 +155,21 @@ class _RestaurantListViewState extends State<RestaurantListView> {
     super.dispose();
   }
 
-  // คำนวณระยะทางระหว่างสองพิกัด (Haversine formula)
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    var p = 0.017453292519943295; // Pi/180
+    var p = 0.017453292519943295; 
     var c = cos;
     var a = 0.5 - c((lat2 - lat1) * p)/2 + 
             c(lat1 * p) * c(lat2 * p) * 
             (1 - c((lon2 - lon1) * p))/2;
-    return 12742 * asin(sqrt(a)); // 2*R*asin(sqrt(a)) where R = 6371 km
+    return 12742 * asin(sqrt(a)); 
   }
 
-  // ขอสิทธิ์การเข้าถึงตำแหน่งและรับตำแหน่งปัจจุบัน
   Future<void> _getCurrentLocation() async {
     setState(() {
       _isLocationLoading = true;
     });
     
     try {
-      // ตรวจสอบว่าการเข้าถึงตำแหน่งเปิดใช้หรือไม่
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         setState(() {
@@ -187,7 +181,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
         return;
       }
 
-      // ขอสิทธิ์การเข้าถึงตำแหน่ง
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -212,7 +205,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
         return;
       }
 
-      // รับตำแหน่งปัจจุบัน
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high
       );
@@ -222,7 +214,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
         _isLocationLoading = false;
       });
       
-      // โหลดร้านอาหารหลังจากรับตำแหน่งเรียบร้อย
       _loadRestaurants();
     } catch (e) {
       setState(() {
@@ -232,7 +223,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
         SnackBar(content: Text('เกิดข้อผิดพลาดในการรับตำแหน่ง: $e')),
       );
       
-      // โหลดร้านอาหารถึงแม้จะไม่สามารถรับตำแหน่งได้
       _loadRestaurants();
     }
   }
@@ -243,35 +233,28 @@ class _RestaurantListViewState extends State<RestaurantListView> {
     });
 
     try {
-      // Cancel existing subscriptions before creating new ones
       for (var subscription in _restaurantSubscriptions) {
         subscription.cancel();
       }
       _restaurantSubscriptions = [];
 
-      // Get verified restaurants
       final QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('restaurants')
           .where('isVerified', isEqualTo: true)
           .get();
 
-      // Process restaurant data
       final List<Map<String, dynamic>> loadedRestaurants = [];
       
       for (var doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
         
-        // Default background color
         Color backgroundColor = const Color(0xFF8B2323);
         
-        // Check if restaurant is available
         bool isAvailable = data['isAvailable'] ?? true;
         
-        // ดึงพิกัดของร้านอาหาร (ถ้ามี)
         double? latitude = data['latitude'] is double ? data['latitude'] : null;
         double? longitude = data['longitude'] is double ? data['longitude'] : null;
         
-        // คำนวณระยะทาง (ถ้ามีพิกัดของทั้งร้านอาหารและผู้ใช้)
         double distance = -1; // ค่าเริ่มต้นถ้าไม่สามารถคำนวณระยะทางได้
         if (_currentPosition != null && latitude != null && longitude != null) {
           distance = _calculateDistance(
@@ -282,13 +265,11 @@ class _RestaurantListViewState extends State<RestaurantListView> {
           );
         }
         
-        // Get promotion images
         List<String> promotionImages = [];
         if (data.containsKey('promotionImage') && data['promotionImage'] != null) {
           promotionImages.add(data['promotionImage']);
         }
         
-        // Create restaurant data object
         Map<String, dynamic> restaurant = {
           'id': doc.id,
           'image': data['restaurantImage'],
@@ -305,7 +286,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
         
         loadedRestaurants.add(restaurant);
         
-        // Set up real-time listener for each restaurant
         var subscription = FirebaseFirestore.instance
             .collection('restaurants')
             .doc(doc.id)
@@ -314,7 +294,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
           if (docSnapshot.exists) {
             final updatedData = docSnapshot.data() as Map<String, dynamic>;
             setState(() {
-              // Find and update the restaurant in our list
               int index = _restaurants.indexWhere((r) => r['id'] == doc.id);
               if (index != -1) {
                 _restaurants[index]['queue'] = updatedData['queueCount'] ?? 0;
@@ -327,12 +306,10 @@ class _RestaurantListViewState extends State<RestaurantListView> {
         _restaurantSubscriptions.add(subscription);
       }
       
-      // เรียงลำดับร้านอาหารตามระยะทาง (จากน้อยไปมาก)
       loadedRestaurants.sort((a, b) {
         double distA = a['distance'] as double;
         double distB = b['distance'] as double;
         
-        // ถ้าไม่สามารถคำนวณระยะทางได้ (-1) ให้แสดงท้ายสุด
         if (distA < 0 && distB < 0) return 0;
         if (distA < 0) return 1;
         if (distB < 0) return -1;
@@ -358,7 +335,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
 
   @override
   Widget build(BuildContext context) {
-    // กรองร้านอาหารตามคำค้นหา
     List<Map<String, dynamic>> filteredRestaurants = _restaurants
         .where((restaurant) =>
             restaurant['name'].toLowerCase().contains(_searchQuery.toLowerCase()))
@@ -401,7 +377,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
           ),
         ),
 
-        // แสดงปุ่มรีเฟรชตำแหน่ง
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(
@@ -433,14 +408,12 @@ class _RestaurantListViewState extends State<RestaurantListView> {
           ),
         ),
 
-        // โชว์ตัวโหลดข้อมูลหากกำลังโหลด
         if (_isLoading || _isLocationLoading)
           const Expanded(
             child: Center(
               child: CircularProgressIndicator(color: Color(0xFF8B2323)),
             ),
           )
-        // โชว์ข้อความถ้าไม่มีร้านอาหาร
         else if (_restaurants.isEmpty)
           const Expanded(
             child: Center(
@@ -450,11 +423,10 @@ class _RestaurantListViewState extends State<RestaurantListView> {
               ),
             ),
           )
-        // แสดงรายการร้านอาหาร
         else
           Expanded(
             child: RefreshIndicator(
-              onRefresh: _loadRestaurants, // ให้ดึงข้อมูลใหม่เมื่อ pull-to-refresh
+              onRefresh: _loadRestaurants,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
@@ -481,7 +453,6 @@ class _RestaurantListViewState extends State<RestaurantListView> {
                             ))
                         .toList(),
 
-                    // Unavailable Section
                     if (filteredRestaurants.any((r) => !r['isAvailable']))
                       const Padding(
                         padding: EdgeInsets.all(16.0),
@@ -550,7 +521,7 @@ class RestaurantCard extends StatefulWidget {
   final String name;
   final String location;
   final double distance;
-  final int queue; // จะใช้เป็นค่าเริ่มต้นก่อนที่จะได้ค่าจริงจาก Stream
+  final int queue;
   final Color backgroundColor;
   final bool isAvailable;
   final List<String> promotionImages;
@@ -583,13 +554,12 @@ class _RestaurantCardState extends State<RestaurantCard> {
   @override
   void initState() {
     super.initState();
-    _currentQueueCount = widget.queue; // ใช้ค่าเริ่มต้นจาก property
+    _currentQueueCount = widget.queue; 
     _setupQueueCountStream();
   }
 
   void _setupQueueCountStream() {
-    // Stream ที่นับจำนวนเอกสารในคอลเลคชัน queues ที่มี restaurantId ตรงกับร้านนี้
-    // และมีสถานะเป็น 'waiting' (รอคิวอยู่)
+    
     _queueCountStream = FirebaseFirestore.instance
         .collection('queues')
         .where('restaurantId', isEqualTo: widget.restaurantId)
@@ -597,7 +567,6 @@ class _RestaurantCardState extends State<RestaurantCard> {
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
 
-    // ลงทะเบียนการฟังการเปลี่ยนแปลงและอัพเดทสถานะเมื่อข้อมูลเปลี่ยน
     _subscription = _queueCountStream?.listen((count) {
       if (mounted) {
         setState(() {
@@ -610,7 +579,6 @@ class _RestaurantCardState extends State<RestaurantCard> {
   @override
   void didUpdateWidget(RestaurantCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // ถ้า restaurantId เปลี่ยน ต้องตั้งค่า stream ใหม่
     if (widget.restaurantId != oldWidget.restaurantId) {
       _subscription?.cancel();
       _setupQueueCountStream();
@@ -619,14 +587,12 @@ class _RestaurantCardState extends State<RestaurantCard> {
 
   @override
   void dispose() {
-    // ยกเลิก subscription เมื่อ widget ถูกทำลาย
     _subscription?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ฟอร์แมตระยะทาง
     String distanceText = widget.distance >= 0 
         ? '${widget.distance.toStringAsFixed(1)} km' 
         : 'ไม่ทราบระยะทาง';
@@ -641,7 +607,7 @@ class _RestaurantCardState extends State<RestaurantCard> {
                 image: widget.image,
                 name: widget.name,
                 location: widget.location,
-                queue: _currentQueueCount, // ใช้จำนวนคิวจริงที่นับได้
+                queue: _currentQueueCount, 
                 backgroundColor: widget.backgroundColor,
                 promotionImages: widget.promotionImages,
                 isFirestoreImage: widget.isFirestoreImage,
@@ -702,7 +668,6 @@ class _RestaurantCardState extends State<RestaurantCard> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    // เพิ่มแสดงระยะทาง
                     Row(
                       children: [
                         Icon(
@@ -720,7 +685,6 @@ class _RestaurantCardState extends State<RestaurantCard> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    // แสดงจำนวนคิวที่นับได้จริง
                     Row(
                       children: [
                         Icon(
@@ -750,7 +714,6 @@ class _RestaurantCardState extends State<RestaurantCard> {
   Widget _buildRestaurantImage() {
     if (widget.isFirestoreImage && widget.image != null && widget.image.isNotEmpty) {
       try {
-        // ถ้าเป็นรูปจาก Firestore (base64)
         return Image.memory(
           base64Decode(widget.image),
           width: 80,
@@ -764,7 +727,6 @@ class _RestaurantCardState extends State<RestaurantCard> {
         return _buildFallbackImage();
       }
     } else {
-      // ถ้าเป็นรูปจาก assets
       return Image.asset(
         widget.image,
         width: 80,

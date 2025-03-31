@@ -103,7 +103,7 @@ class _AdminPanelState extends State<AdminPanel> {
   }
 }
 
-/// ✅ **หน้า Awaiting Verification**
+
 class AwaitingVerificationPage extends StatelessWidget {
   final List<Map<String, dynamic>> restaurantRequests;
   final Function(int) onApprove;
@@ -153,7 +153,7 @@ class AwaitingVerificationPage extends StatelessWidget {
     );
   }
 }
-/// ✅ **Card Widget for Displaying Restaurant Info**
+
 class RestaurantCard extends StatelessWidget {
   final String name;
   final String location;
@@ -198,7 +198,7 @@ class RestaurantCard extends StatelessWidget {
   }
 }
 
-/// ✅ **หน้าแสดงรายละเอียดของร้าน**
+
 class RestaurantDetailPage extends StatelessWidget {
   final Map<String, dynamic> restaurant;
   final int index;
@@ -329,7 +329,7 @@ class VerifiedPage extends StatelessWidget {
   }
 }
 
-/// ✅ **หน้าแสดงรายละเอียดของร้านที่ได้รับการอนุมัติ**
+
 class VerifiedRestaurantDetailPage extends StatelessWidget {
   final Map<String, dynamic> restaurant;
   final int index;
@@ -412,14 +412,14 @@ class VerifiedRestaurantDetailPage extends StatelessWidget {
               children: [
                 OutlinedButton(
                   onPressed: () {
-                    Navigator.pop(context); // ลบแล้วกลับไปหน้า Verified
+                    Navigator.pop(context); 
                   },
                   child: const Text("Delete", style: TextStyle(color: Color(0xFF8B2323))),
                 ),
                 const SizedBox(width: 16),
                 ElevatedButton(
                   onPressed: () {
-                    _showContactModal(context); // แสดง Contact Modal
+                    _showContactModal(context); 
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B2323)),
                   child: const Text("Contact", style: TextStyle(color: Colors.white)),
@@ -441,7 +441,7 @@ class LogoutPage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(Icons.exit_to_app, size: 100, color: Colors.red[700]), // ✅ ไอคอน Logout
+          Icon(Icons.exit_to_app, size: 100, color: Colors.red[700]), 
           const SizedBox(height: 20),
           const Text(
             "Are you sure you want to log out?",
@@ -460,7 +460,7 @@ class LogoutPage extends StatelessWidget {
             children: [
               OutlinedButton(
                 onPressed: () {
-                  // ✅ ปิด Modal และยกเลิก Logout
+                  
                   Navigator.pop(context);
                 },
                 style: OutlinedButton.styleFrom(
@@ -472,7 +472,7 @@ class LogoutPage extends StatelessWidget {
               const SizedBox(width: 16),
               ElevatedButton(
                 onPressed: () {
-                  // ✅ กลับไปหน้า Login หรือหน้าหลัก
+                  
                   Navigator.popUntil(context, (route) => route.isFirst);
                 },
                 style: ElevatedButton.styleFrom(

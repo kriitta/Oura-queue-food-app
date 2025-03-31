@@ -38,10 +38,10 @@ class AdminPanel extends StatefulWidget {
 class _AdminPanelState extends State<AdminPanel> {
   int _selectedIndex = 0;
 
-  // Update this list to use VerifiedRestaurantsView instead of VerifiedPage
+  
   final List<Widget> _pages = [
     const AwaitingVerificationView(),
-    const VerifiedRestaurantsView(), // Changed from VerifiedPage
+    const VerifiedRestaurantsView(), 
     const LogoutPage(),
   ];
 
@@ -89,22 +89,22 @@ class _AdminPanelState extends State<AdminPanel> {
   }
 }
 
-/// ✅ **หน้า 1: Awaiting Verification (Title ชิดซ้าย)**
+
 class AwaitingVerificationPage extends StatelessWidget {
   const AwaitingVerificationPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding: EdgeInsets.all(16.0), // ✅ ให้ขอบห่างจากขอบจอ
+      padding: EdgeInsets.all(16.0), 
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start, // ✅ ทำให้ข้อความชิดซ้าย
+        crossAxisAlignment: CrossAxisAlignment.start, 
         children: [
           Text(
             "Awaiting Verification",
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
-          Spacer(), // ✅ ดันให้ข้อความอยู่ตรงกลาง
+          Spacer(), 
           Center(
             child: Column(
               children: [
@@ -116,14 +116,14 @@ class AwaitingVerificationPage extends StatelessWidget {
               ],
             ),
           ),
-          Spacer(), // ✅ ดันให้ห่างขอบล่าง
+          Spacer(), 
         ],
       ),
     );
   }
 }
 
-/// ✅ **หน้า 2: Verified**
+
 class VerifiedPage extends StatelessWidget {
   const VerifiedPage({super.key});
 
@@ -147,7 +147,7 @@ class VerifiedPage extends StatelessWidget {
   }
 }
 
-/// ✅ **หน้า 3: Logout**
+
 class LogoutPage extends StatelessWidget {
 
   const LogoutPage({super.key});
@@ -209,7 +209,7 @@ class _VerifyRestaurantsPageState extends State<VerifyRestaurantsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Oura Header
+            
             Container(
               color: const Color(0xFF8B2323),
               padding: const EdgeInsets.all(16),
@@ -224,7 +224,7 @@ class _VerifyRestaurantsPageState extends State<VerifyRestaurantsPage> {
               ),
             ),
 
-            // Switch between views based on selected index
+            
             if (_selectedIndex == 0) const AwaitingVerificationView(),
             if (_selectedIndex == 1) const VerifiedRestaurantsView(),
           ],
@@ -263,12 +263,12 @@ class LogoutView extends StatelessWidget {
 
   Future<void> _logout(BuildContext context) async {
     try {
-      // Implement logout logic
-      // For example:
-      // await FirebaseAuth.instance.signOut();
       
-      // Navigate to login or main screen
-      // Navigator.of(context).pushReplacement(...);
+      
+      
+      
+      
+      
       
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -354,7 +354,7 @@ class AwaitingVerificationView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Awaiting Verification Title
+          
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text(
@@ -367,7 +367,7 @@ class AwaitingVerificationView extends StatelessWidget {
             ),
           ),
 
-          // Restaurant List
+          
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -427,7 +427,7 @@ class VerifiedRestaurantsView extends StatefulWidget {
 class _VerifiedRestaurantsViewState extends State<VerifiedRestaurantsView> {
   bool _isUpdatingCoordinates = false;
 
-  // เพิ่มฟังก์ชันนี้
+  
   Future<void> _updateAllCoordinates() async {
     bool? confirm = await showDialog<bool>(
       context: context,
@@ -480,7 +480,7 @@ class _VerifiedRestaurantsViewState extends State<VerifiedRestaurantsView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Successfully Verified Title
+          
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: ElevatedButton.icon(
@@ -500,7 +500,7 @@ class _VerifiedRestaurantsViewState extends State<VerifiedRestaurantsView> {
             ),
           ),
 
-          // Restaurant List
+          
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -537,9 +537,9 @@ class _VerifiedRestaurantsViewState extends State<VerifiedRestaurantsView> {
                     var restaurant = snapshot.data!.docs[index];
                     var restaurantData = restaurant.data() as Map<String, dynamic>;
                     
-                    // Get queue count from restaurantData or randomize for demo
+                    
                     int queueCount = restaurantData['queueCount'] ?? 
-                                     (index * 7 + 5); // Generate random number for demo
+                                     (index * 7 + 5); 
                     
                     return VerifiedRestaurantCard(
                       restaurantData: restaurantData,
@@ -572,7 +572,7 @@ class VerifiedRestaurantCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navigate to restaurant details when card is tapped
+        
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -594,7 +594,7 @@ class VerifiedRestaurantCard extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              // Restaurant Logo
+              
               Container(
                 width: 80,
                 height: 80,
@@ -614,12 +614,12 @@ class VerifiedRestaurantCard extends StatelessWidget {
               ),
               const SizedBox(width: 16),
               
-              // Restaurant Details
+              
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Restaurant Name
+                    
                     Text(
                       restaurantData['name'] ?? 'Unnamed Restaurant',
                       style: const TextStyle(
@@ -629,7 +629,7 @@ class VerifiedRestaurantCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     
-                    // Location with icon
+                    
                     Row(
                       children: [
                         const Icon(
@@ -653,7 +653,7 @@ class VerifiedRestaurantCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     
-                    // Description with icon (replacing Queue)
+                    
                     Row(
                       children: [
                         const Icon(
@@ -698,12 +698,12 @@ class _RestaurantVerificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get queue count from restaurantData or set default value
+    
     int queueCount = restaurantData['queueCount'] ?? 0;
     
-    // If card is in verified section but has no queue, generate a random number for demo
+    
     if (isVerified && queueCount == 0) {
-      // Generate a semi-random queue number based on restaurant name length for demo
+      
       queueCount = (restaurantData['name']?.length ?? 1) * 7 + 5;
     }
     
@@ -722,7 +722,7 @@ class _RestaurantVerificationCard extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              // Restaurant Logo
+              
               Container(
                 width: 80,
                 height: 80,
@@ -742,12 +742,12 @@ class _RestaurantVerificationCard extends StatelessWidget {
               ),
               const SizedBox(width: 16),
               
-              // Restaurant Details
+              
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Restaurant Name
+                    
                     Text(
                       restaurantData['name'] ?? 'Unnamed Restaurant',
                       style: const TextStyle(
@@ -757,7 +757,7 @@ class _RestaurantVerificationCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     
-                    // Location with icon
+                    
                     Row(
                       children: [
                         const Icon(
@@ -780,10 +780,10 @@ class _RestaurantVerificationCard extends StatelessWidget {
                       ],
                     ),
                     
-                    // Only show queue for verified restaurants
+                    
                     if (isVerified) ...[
                       const SizedBox(height: 8),
-                      // Queue with icon
+                      
                       Row(
                         children: [
                           const Icon(
@@ -803,7 +803,7 @@ class _RestaurantVerificationCard extends StatelessWidget {
                       ),
                     ],
                     
-                    // Only show description for non-verified restaurants
+                    
                     if (!isVerified) ...[
                       const SizedBox(height: 8),
                       Row(
@@ -863,9 +863,9 @@ class RestaurantDetailPage extends StatelessWidget {
     required this.restaurantId,
   });
 
-  // Improved contact method that fetches owner information
+  
   void _showContactModal(BuildContext context) async {
-    // Show loading dialog while fetching data
+    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -875,11 +875,11 @@ class RestaurantDetailPage extends StatelessWidget {
     );
 
     try {
-      // Initialize contact information variables
+      
       String phone = 'N/A';
       String email = 'N/A';
       
-      // Try to get contact from restaurant data first
+      
       if (restaurantData["phone"] != null && restaurantData["phone"].toString().isNotEmpty) {
         phone = restaurantData["phone"];
       }
@@ -888,7 +888,7 @@ class RestaurantDetailPage extends StatelessWidget {
         email = restaurantData["email"];
       }
       
-      // If we have an ownerId, try to get contact info from the partners collection
+      
       if (restaurantData['ownerId'] != null) {
         try {
           DocumentSnapshot ownerDoc = await FirebaseFirestore.instance
@@ -899,12 +899,12 @@ class RestaurantDetailPage extends StatelessWidget {
           if (ownerDoc.exists) {
             Map<String, dynamic> ownerData = ownerDoc.data() as Map<String, dynamic>;
             
-            // Update phone if available in owner data
+            
             if (ownerData['phone'] != null && ownerData['phone'].toString().isNotEmpty) {
               phone = ownerData['phone'];
             }
             
-            // Update email if available in owner data
+            
             if (ownerData['email'] != null && ownerData['email'].toString().isNotEmpty) {
               email = ownerData['email'];
             }
@@ -914,10 +914,10 @@ class RestaurantDetailPage extends StatelessWidget {
         }
       }
       
-      // Close loading dialog
+      
       Navigator.pop(context);
       
-      // Show contact information dialog
+      
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -943,7 +943,7 @@ class RestaurantDetailPage extends StatelessWidget {
         },
       );
     } catch (e) {
-      // Close loading dialog and show error
+      
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading contact information: $e')),
@@ -967,7 +967,7 @@ class RestaurantDetailPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Restaurant Logo/Image
+            
             CircleAvatar(
               radius: 50,
               backgroundColor: Colors.grey[300],
@@ -980,14 +980,14 @@ class RestaurantDetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             
-            // Restaurant Name
+            
             Text(
               restaurantData["name"] ?? "Unnamed Restaurant", 
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)
             ),
             const SizedBox(height: 8),
             
-            // Location
+            
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1000,7 +1000,7 @@ class RestaurantDetailPage extends StatelessWidget {
               ],
             ),
             
-            // Description (replaced Queue)
+            
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1020,7 +1020,7 @@ class RestaurantDetailPage extends StatelessWidget {
             const Text("Promotion", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             
-            // Promotion Image
+            
             Expanded(
               child: restaurantData['promotionImage'] != null
                 ? Image.memory(
@@ -1038,13 +1038,13 @@ class RestaurantDetailPage extends StatelessWidget {
             const Text("Restaurant Management", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             
-            // Action Buttons
+            
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 OutlinedButton(
                   onPressed: () async {
-                    // Show confirmation dialog
+                    
                     bool? confirm = await showDialog<bool>(
                       context: context,
                       builder: (context) => AlertDialog(
@@ -1065,7 +1065,7 @@ class RestaurantDetailPage extends StatelessWidget {
                     
                     if (confirm == true) {
                       try {
-                        // Update restaurant verification status
+                        
                         await FirebaseFirestore.instance
                             .collection('restaurants')
                             .doc(restaurantId)
@@ -1073,7 +1073,7 @@ class RestaurantDetailPage extends StatelessWidget {
                           'isVerified': false,
                         });
                         
-                        Navigator.pop(context); // Return to verified list
+                        Navigator.pop(context); 
                         
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -1132,7 +1132,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
 
   Future<void> _verifyRestaurant(BuildContext context, bool isApproved) async {
     try {
-      // Show loading indicator
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('กำลังดำเนินการ...'),
@@ -1141,7 +1141,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
       );
 
       if (isApproved) {
-        // APPROVE RESTAURANT - Set isVerified to true
+        
         print('Approving restaurant: $restaurantId');
         
         await FirebaseFirestore.instance
@@ -1156,7 +1156,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
         
         print('Restaurant verified successfully');
         
-        // Update owner status if available
+        
         if (restaurantData['ownerId'] != null) {
           await FirebaseFirestore.instance
               .collection('partners')
@@ -1167,7 +1167,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
           print('Owner status updated');
         }
         
-        // Close bottom sheet and show success message
+        
         Navigator.of(context).pop();
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1178,10 +1178,10 @@ class _RestaurantDetailsSheet extends StatelessWidget {
           ),
         );
       } else {
-        // DENY RESTAURANT - Delete from database
+        
         print('Denying restaurant: $restaurantId');
         
-        // Delete restaurant completely
+        
         await FirebaseFirestore.instance
             .collection('restaurants')
             .doc(restaurantId)
@@ -1189,7 +1189,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
         
         print('Restaurant deleted from database');
         
-        // Update owner status if available
+        
         if (restaurantData['ownerId'] != null) {
           await FirebaseFirestore.instance
               .collection('partners')
@@ -1202,7 +1202,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
           print('Owner status updated after denial');
         }
         
-        // Close bottom sheet and show denial message
+        
         Navigator.of(context).pop();
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1214,7 +1214,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
         );
       }
     } catch (e) {
-      // Error handling
+      
       print('Error in verification process: $e');
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1225,16 +1225,16 @@ class _RestaurantDetailsSheet extends StatelessWidget {
         ),
       );
       
-      // Make sure bottom sheet is closed
+      
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
     }
   }
   
-  // Improved contact method that fetches owner information
+  
   void _showContactModal(BuildContext context) async {
-    // Show loading dialog while fetching data
+    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1244,11 +1244,11 @@ class _RestaurantDetailsSheet extends StatelessWidget {
     );
 
     try {
-      // Initialize contact information variables
+      
       String phone = 'N/A';
       String email = 'N/A';
       
-      // Try to get contact from restaurant data first
+      
       if (restaurantData["phone"] != null && restaurantData["phone"].toString().isNotEmpty) {
         phone = restaurantData["phone"];
       }
@@ -1259,7 +1259,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
         email = restaurantData["ownerEmail"];
       }
       
-      // If we have an ownerId, try to get contact info from the partners collection
+      
       if (restaurantData['ownerId'] != null) {
         try {
           DocumentSnapshot ownerDoc = await FirebaseFirestore.instance
@@ -1270,12 +1270,12 @@ class _RestaurantDetailsSheet extends StatelessWidget {
           if (ownerDoc.exists) {
             Map<String, dynamic> ownerData = ownerDoc.data() as Map<String, dynamic>;
             
-            // Update phone if available in owner data
+            
             if (ownerData['phone'] != null && ownerData['phone'].toString().isNotEmpty) {
               phone = ownerData['phone'];
             }
             
-            // Update email if available in owner data
+            
             if (ownerData['email'] != null && ownerData['email'].toString().isNotEmpty) {
               email = ownerData['email'];
             }
@@ -1285,10 +1285,10 @@ class _RestaurantDetailsSheet extends StatelessWidget {
         }
       }
       
-      // Close loading dialog
+      
       Navigator.pop(context);
       
-      // Show contact information dialog
+      
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -1314,7 +1314,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
         },
       );
     } catch (e) {
-      // Close loading dialog and show error
+      
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading contact information: $e')),
@@ -1339,7 +1339,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
             controller: scrollController,
             padding: const EdgeInsets.all(20),
             children: [
-              // Back Button and Title
+              
               Row(
                 children: [
                   IconButton(
@@ -1360,7 +1360,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // Restaurant Logo
+              
               Center(
                 child: CircleAvatar(
                   radius: 60,
@@ -1376,7 +1376,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // Restaurant Name
+              
               Text(
                 restaurantData['name'] ?? 'Unnamed Restaurant',
                 style: const TextStyle(
@@ -1388,7 +1388,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
 
               const SizedBox(height: 10),
 
-              // Location
+              
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -1404,7 +1404,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
                 ],
               ),
               
-              // Description (always show for both verified and non-verified)
+              
               const SizedBox(height: 20),
               const Text(
                 'Description',
@@ -1420,7 +1420,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Promotion Section
+              
               const Text(
                 'Promotion',
                 style: TextStyle(
@@ -1430,7 +1430,7 @@ class _RestaurantDetailsSheet extends StatelessWidget {
               ),
               const SizedBox(height: 10),
 
-              // Promotion Image
+              
               if (restaurantData['promotionImage'] != null)
                 Container(
                   height: 200,
@@ -1458,14 +1458,14 @@ class _RestaurantDetailsSheet extends StatelessWidget {
 
               const SizedBox(height: 30),
 
-              // Buttons Section
+              
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => isVerified 
-                          ? _verifyRestaurant(context, false)  // Remove from verified
-                          : _verifyRestaurant(context, false), // Deny approval
+                          ? _verifyRestaurant(context, false)  
+                          : _verifyRestaurant(context, false), 
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Color(0xFF8B2323), width: 2),
@@ -1488,8 +1488,8 @@ class _RestaurantDetailsSheet extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => isVerified
-                          ? _showContactModal(context)       // Show contact info
-                          : _verifyRestaurant(context, true), // Approve restaurant
+                          ? _showContactModal(context)       
+                          : _verifyRestaurant(context, true), 
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF8B2323),
                         padding: const EdgeInsets.symmetric(vertical: 12),

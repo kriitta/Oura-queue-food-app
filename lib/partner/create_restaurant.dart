@@ -92,13 +92,11 @@ class _CreateRestaurantPageState extends State<CreateRestaurantPage> {
     });
 
     try {
-      // Get current user
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         throw Exception('User not authenticated');
       }
 
-      // Get partner information
       DocumentSnapshot partnerDoc = await FirebaseFirestore.instance
           .collection('partners')
           .doc(currentUser.uid)
@@ -122,10 +120,8 @@ try {
   }
 } catch (e) {
   print('⚠️ ไม่สามารถแปลงที่อยู่เป็นพิกัดได้: $e');
-  // ไม่ต้อง return เพื่อให้สร้างร้านได้แม้ไม่มีพิกัด
 }
 
-// ปรับ DocumentReference restaurantRef โดยเพิ่มฟิลด์ latitude และ longitude
 DocumentReference restaurantRef = await FirebaseFirestore.instance.collection('restaurants').add({
   'name': _nameController.text.trim(),
   'location': _locationController.text.trim(),
@@ -140,18 +136,16 @@ DocumentReference restaurantRef = await FirebaseFirestore.instance.collection('r
   'reviewCount': 0,
   'createdAt': FieldValue.serverTimestamp(),
   'queue': 0,
-  'latitude': latitude,  // เพิ่มฟิลด์ latitude
-  'longitude': longitude, // เพิ่มฟิลด์ longitude
+  'latitude': latitude,  
+  'longitude': longitude, 
 });
       
-      // Update partner document with restaurant reference
       await FirebaseFirestore.instance.collection('partners').doc(currentUser.uid).update({
         'restaurantId': restaurantRef.id,
         'hasSubmittedRestaurant': true,
         'restaurantStatus': 'pending',
       });
 
-      // Navigate to thank you page
       if (mounted) {
         Navigator.push(
           context,
@@ -197,7 +191,6 @@ DocumentReference restaurantRef = await FirebaseFirestore.instance.collection('r
                       ),
                       const SizedBox(height: 16),
 
-                      // Restaurant Image (Circle in center)
                       Center(
                         child: Column(
                           children: [
@@ -233,7 +226,6 @@ DocumentReference restaurantRef = await FirebaseFirestore.instance.collection('r
 
                       const SizedBox(height: 24),
 
-                      // Restaurant Name Field
                       _buildLabel("Restaurant Name *"),
                       _buildTextField(
                         context,
@@ -248,7 +240,6 @@ DocumentReference restaurantRef = await FirebaseFirestore.instance.collection('r
                       ),
                       const SizedBox(height: 16),
 
-                      // Location Field
                       _buildLabel("Location *"),
                       _buildTextField(
                         context,
@@ -263,7 +254,6 @@ DocumentReference restaurantRef = await FirebaseFirestore.instance.collection('r
                       ),
                       const SizedBox(height: 16),
 
-                      // Description Field
                       _buildLabel("Description"),
                       _buildTextField(
                         context,
@@ -273,7 +263,6 @@ DocumentReference restaurantRef = await FirebaseFirestore.instance.collection('r
                       ),
                       const SizedBox(height: 24),
 
-                      // Promotion Image
                       const Text(
                         "Promotion Image",
                         style: TextStyle(
@@ -284,7 +273,6 @@ DocumentReference restaurantRef = await FirebaseFirestore.instance.collection('r
                       ),
                       const SizedBox(height: 8),
 
-                      // Promotion Image Container
                       Container(
                         height: 160,
                         width: double.infinity,
@@ -326,7 +314,6 @@ DocumentReference restaurantRef = await FirebaseFirestore.instance.collection('r
 
                       const SizedBox(height: 32),
 
-                      // Create Restaurant Button
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -450,7 +437,6 @@ class _ThankYouPageState extends State<ThankYouPage> {
         throw Exception('User not authenticated');
       }
 
-      // Get partner information
       DocumentSnapshot partnerDoc = await FirebaseFirestore.instance
           .collection('partners')
           .doc(currentUser.uid)
@@ -462,9 +448,7 @@ class _ThankYouPageState extends State<ThankYouPage> {
 
       Map<String, dynamic> partnerData = partnerDoc.data() as Map<String, dynamic>;
       
-      // Check if partner has a restaurant
       if (partnerData.containsKey('restaurantId') && partnerData['restaurantId'] != null) {
-        // Load restaurant data
         DocumentSnapshot restaurantDoc = await FirebaseFirestore.instance
             .collection('restaurants')
             .doc(partnerData['restaurantId'])
@@ -472,7 +456,6 @@ class _ThankYouPageState extends State<ThankYouPage> {
         
         if (restaurantDoc.exists) {
           _restaurantData = restaurantDoc.data() as Map<String, dynamic>;
-          // Make sure restaurantId is included in the data
           _restaurantData!['restaurantId'] = restaurantDoc.id;
           _verificationStatus = _restaurantData!['isVerified'] ? 'verified' : 'pending';
         }
@@ -486,16 +469,13 @@ class _ThankYouPageState extends State<ThankYouPage> {
     }
   }
 
-  // Navigate to Restaurant Management Interface
   void _navigateToRestaurantInterface() async {
     try {
-      // Get current user ID
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         throw Exception('User not authenticated');
       }
 
-      // Get partner document to get restaurantId
       DocumentSnapshot partnerDoc = await FirebaseFirestore.instance
           .collection('partners')
           .doc(currentUser.uid)
@@ -508,7 +488,6 @@ class _ThankYouPageState extends State<ThankYouPage> {
       Map<String, dynamic> partnerData = partnerDoc.data() as Map<String, dynamic>;
       String restaurantId = partnerData['restaurantId'];
       
-      // Set this restaurant as the active restaurant in a global settings collection
       await FirebaseFirestore.instance
           .collection('settings')
           .doc('active_restaurant')
@@ -518,7 +497,6 @@ class _ThankYouPageState extends State<ThankYouPage> {
             'lastUpdated': FieldValue.serverTimestamp()
           });
       
-      // Navigate to the MainPage
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -573,7 +551,6 @@ class _ThankYouPageState extends State<ThankYouPage> {
                     ),
                     const SizedBox(height: 20),
                     
-                    // Restaurant Image
                     if (_restaurantData != null && _restaurantData!.containsKey('restaurantImage'))
                       CircleAvatar(
                         radius: 60,
@@ -590,7 +567,6 @@ class _ThankYouPageState extends State<ThankYouPage> {
                       
                     const SizedBox(height: 20),
                     
-                    // Restaurant Name
                     if (_restaurantData != null)
                       Text(
                         _restaurantData!['name'] ?? 'Your Restaurant',
@@ -602,7 +578,6 @@ class _ThankYouPageState extends State<ThankYouPage> {
                       
                     const SizedBox(height: 10),
                     
-                    // Status Badge
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
@@ -646,7 +621,6 @@ class _ThankYouPageState extends State<ThankYouPage> {
                     
                     const SizedBox(height: 25),
                     
-                    // Status Message
                     Text(
                       _verificationStatus == 'verified'
                           ? "Your restaurant has been verified! You can now start accepting reservations."
@@ -657,7 +631,6 @@ class _ThankYouPageState extends State<ThankYouPage> {
                     
                     const SizedBox(height: 30),
                     
-                    // NEW: Start Button for verified restaurants
                     if (_verificationStatus == 'verified')
                       ElevatedButton(
                         onPressed: _navigateToRestaurantInterface,
@@ -680,7 +653,6 @@ class _ThankYouPageState extends State<ThankYouPage> {
                     
                     const SizedBox(height: 15),
                     
-                    // Logout Button
                     ElevatedButton(
                       onPressed: _signOut,
                       style: ElevatedButton.styleFrom(

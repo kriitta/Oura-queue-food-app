@@ -7,7 +7,7 @@ import 'signup.dart';
 import '../system/firebase_options.dart';
 import '../user/main.dart';
 import '../partner/create_restaurant.dart';
-import '../admin/verify.dart'; // เพิ่มการ import หน้า admin (สร้างหน้านี้ตามต้องการ)
+import '../admin/verify.dart'; 
 import '../system/notification_service.dart';
 
 void main() async {
@@ -20,7 +20,6 @@ void main() async {
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
   );
-  // เริ่มต้นระบบการแจ้งเตือน
   final notificationService = NotificationService();
   await notificationService.init();
 
@@ -58,12 +57,10 @@ class AuthCheckPage extends StatelessWidget {
     User? currentUser = _auth.currentUser;
     
     if (currentUser == null) {
-      // ถ้ายังไม่ได้ล็อกอิน ส่งไปหน้า WelcomePage
       return const WelcomePage();
     }
     
     try {
-      // ตรวจสอบว่าเป็น admin หรือไม่
       DocumentSnapshot adminDoc = await _firestore
           .collection('admins')
           .doc(currentUser.uid)
@@ -73,7 +70,6 @@ class AuthCheckPage extends StatelessWidget {
         return const AdminPanel();
       }
       
-      // ตรวจสอบว่าเป็น partner หรือไม่
       DocumentSnapshot partnerDoc = await _firestore
           .collection('partners')
           .doc(currentUser.uid)
@@ -82,18 +78,14 @@ class AuthCheckPage extends StatelessWidget {
       if (partnerDoc.exists) {
         Map<String, dynamic> partnerData = partnerDoc.data() as Map<String, dynamic>;
         
-        // ตรวจสอบว่า partner ได้สร้างร้านอาหารไปแล้วหรือไม่
         if (partnerData.containsKey('hasSubmittedRestaurant') && 
             partnerData['hasSubmittedRestaurant'] == true) {
-          // กรณีที่สร้างร้านอาหารไปแล้ว ส่งไปหน้า ThankYouPage
           return const ThankYouPage();
         } else {
-          // กรณีที่ยังไม่ได้สร้างร้านอาหาร ส่งไปหน้าสร้างร้านอาหาร
           return const CreateRestaurantPage();
         }
       }
       
-      // ตรวจสอบว่าเป็น user หรือไม่
       DocumentSnapshot userDoc = await _firestore
           .collection('users')
           .doc(currentUser.uid)
@@ -106,7 +98,6 @@ class AuthCheckPage extends StatelessWidget {
       print('Error checking user type: $e');
     }
     
-    // กรณีเกิดข้อผิดพลาดหรือไม่พบข้อมูลผู้ใช้ ให้ส่งไปหน้า WelcomePage
     return const WelcomePage();
   }
 
@@ -221,7 +212,6 @@ class WelcomePage extends StatelessWidget {
   }
 }
 
-// This class can be your home page for users after successful login
 class HomePage extends StatefulWidget {
   final String userRole;
   const HomePage({super.key, required this.userRole});

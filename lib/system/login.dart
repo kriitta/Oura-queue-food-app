@@ -25,20 +25,17 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       try {
-        // Attempt to sign in with Firebase Authentication
         UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
 
-        // ตรวจสอบว่าเป็น admin หรือไม่
         DocumentSnapshot adminDoc = await FirebaseFirestore.instance
             .collection('admins')
             .doc(userCredential.user!.uid)
             .get();
             
         if (adminDoc.exists) {
-          // ถ้าเป็น admin ให้นำทางไปยังหน้า admin
           final adminData = adminDoc.data() as Map<String, dynamic>;
           final String adminName = adminData['name'] ?? 'Admin';
           
@@ -52,14 +49,12 @@ class _LoginPageState extends State<LoginPage> {
           return;
         }
 
-        // ตรวจสอบว่าเป็น partner หรือไม่
         DocumentSnapshot partnerDoc = await FirebaseFirestore.instance
             .collection('partners')
             .doc(userCredential.user!.uid)
             .get();
         
         if (partnerDoc.exists) {
-          // ถ้าเป็น partner
           final partnerData = partnerDoc.data() as Map<String, dynamic>;
           final String partnerName = partnerData['ownerName'] ?? 'Partner';
           
@@ -67,15 +62,12 @@ class _LoginPageState extends State<LoginPage> {
             SnackBar(content: Text('Partner Login Successful! Welcome, $partnerName')),
           );
           
-          // ตรวจสอบว่า partner ได้สร้างร้านอาหารไปแล้วหรือไม่
           if (partnerData.containsKey('hasSubmittedRestaurant') && 
               partnerData['hasSubmittedRestaurant'] == true) {
-            // กรณีที่สร้างร้านอาหารไปแล้ว นำทางไปยังหน้า ThankYouPage
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (context) => const ThankYouPage()),
             );
           } else {
-            // กรณีที่ยังไม่ได้สร้างร้านอาหาร นำทางไปยังหน้าสร้างร้านอาหาร
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (context) => const CreateRestaurantPage()),
             );
@@ -83,14 +75,12 @@ class _LoginPageState extends State<LoginPage> {
           return;
         }
 
-        // ตรวจสอบว่าเป็น user หรือไม่
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(userCredential.user!.uid)
             .get();
         
         if (userDoc.exists) {
-          // ถ้าเป็น user ทั่วไป
           final userData = userDoc.data() as Map<String, dynamic>;
           final String name = userData['name'] ?? 'User';
 
@@ -98,20 +88,17 @@ class _LoginPageState extends State<LoginPage> {
             SnackBar(content: Text('Login Successful! Welcome, $name')),
           );
 
-          // นำทางไปยังหน้าหลักของ user
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const QuraApp()),
           );
           return;
         }
 
-        // กรณีไม่พบข้อมูลผู้ใช้ใน Firestore เลย
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('User profile not found. Please contact support.')),
         );
 
       } on FirebaseAuthException catch (e) {
-        // Handle specific Firebase Authentication errors
         String errorMessage = 'Login failed';
         switch (e.code) {
           case 'user-not-found':
@@ -132,7 +119,6 @@ class _LoginPageState extends State<LoginPage> {
           SnackBar(content: Text(errorMessage)),
         );
       } catch (e) {
-        // Handle any other unexpected errors
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('An unexpected error occurred: $e')),
         );

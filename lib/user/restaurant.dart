@@ -16,7 +16,7 @@ class RestaurantDetailPage extends StatefulWidget {
   final List<String> promotionImages;
   final bool isFirestoreImage;
   final String restaurantId;
-  final double? distance; // Parameter for distance
+  final double? distance;
 
   const RestaurantDetailPage({
     super.key,
@@ -28,7 +28,7 @@ class RestaurantDetailPage extends StatefulWidget {
     required this.promotionImages,
     this.isFirestoreImage = false,
     required this.restaurantId,
-    this.distance, // Include distance parameter
+    this.distance, 
   });
 
   @override
@@ -38,8 +38,8 @@ class RestaurantDetailPage extends StatefulWidget {
 class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
   final _pageController = PageController();
   bool _isLoading = false;
-  double? _distance; // Variable to store distance
-  bool _isLoadingDistance = false; // Loading state for distance calculation
+  double? _distance; 
+  bool _isLoadingDistance = false; 
   List<String> _promotionImages = [];
   bool _isLoadingPromotions = false;
 
@@ -51,15 +51,11 @@ void initState() {
     _fetchRestaurantCoordinates();
   }
   
-  // เพิ่มการโหลดโปรโมชันแบบ real-time
   _loadPromotions();
 }
 
 
 
-// ฟังก์ชันใหม่สำหรับโหลดโปรโมชัน
-// แก้ไขฟังก์ชัน _loadPromotions() เพื่อให้โหลดข้อมูลทุกครั้ง
-// แก้ไขฟังก์ชันโหลดโปรโมชันเพื่อรองรับทั้งสองรูปแบบการเก็บข้อมูล
 Future<void> _loadPromotions() async {
   setState(() {
     _isLoadingPromotions = true;
@@ -76,13 +72,11 @@ Future<void> _loadPromotions() async {
       final data = restaurantDoc.data() as Map<String, dynamic>;
       
       
-      // ถ้าไม่พบข้อมูลใน promotionImages ให้ตรวจสอบฟิลด์ promotionImageRefs
       if (data.containsKey('promotionImageRefs') && data['promotionImageRefs'] is List) {
         List<dynamic> refs = data['promotionImageRefs'];
         if (refs.isNotEmpty) {
           print('📱 พบข้อมูล promotionImageRefs จำนวน ${refs.length} รายการ');
           
-          // โหลดรูปภาพจาก promotion_images collection
           List<String> loadedImages = [];
           for (String ref in refs.cast<String>()) {
             try {
@@ -126,14 +120,12 @@ Future<void> _loadPromotions() async {
   }
 }
 
-  // Function to fetch restaurant coordinates and calculate distance
   Future<void> _fetchRestaurantCoordinates() async {
     setState(() {
       _isLoadingDistance = true;
     });
 
     try {
-      // Get restaurant coordinates from Firestore
       DocumentSnapshot doc = await FirebaseFirestore.instance
           .collection('restaurants')
           .doc(widget.restaurantId)
@@ -146,7 +138,6 @@ Future<void> _loadPromotions() async {
             data['longitude'] is double ? data['longitude'] : null;
 
         if (latitude != null && longitude != null) {
-          // Check location permission
           LocationPermission permission = await Geolocator.checkPermission();
           if (permission == LocationPermission.denied) {
             permission = await Geolocator.requestPermission();
@@ -154,11 +145,9 @@ Future<void> _loadPromotions() async {
 
           if (permission == LocationPermission.always ||
               permission == LocationPermission.whileInUse) {
-            // Get user's current position
             Position position = await Geolocator.getCurrentPosition(
                 desiredAccuracy: LocationAccuracy.high);
 
-            // Calculate distance
             double calculatedDistance = _calculateDistance(
                 position.latitude, position.longitude, latitude, longitude);
 
@@ -177,15 +166,14 @@ Future<void> _loadPromotions() async {
     }
   }
 
-  // Calculate distance between two coordinates (Haversine formula)
   double _calculateDistance(
       double lat1, double lon1, double lat2, double lon2) {
-    var p = 0.017453292519943295; // Pi/180
+    var p = 0.017453292519943295; 
     var c = cos;
     var a = 0.5 -
         c((lat2 - lat1) * p) / 2 +
         c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p)) / 2;
-    return 12742 * asin(sqrt(a)); // 2*R*asin(sqrt(a)) where R = 6371 km
+    return 12742 * asin(sqrt(a)); 
   }
 
   void _showQueueNowDialog() {
@@ -272,7 +260,6 @@ Future<void> _loadPromotions() async {
 
                   const SizedBox(height: 20),
 
-                  // Number of persons
                   const Text(
                     'Number of persons:',
                     style: TextStyle(fontSize: 16),
@@ -377,14 +364,12 @@ Future<void> _loadPromotions() async {
     );
   }
 
-  // Function to add queue now in Firestore - using the more structured approach from first file
   Future<void> _addQueueNow(String tableType, int numberOfPersons) async {
   try {
     setState(() {
       _isLoading = true;
     });
 
-    // Check if user is logged in
     User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -396,7 +381,6 @@ Future<void> _loadPromotions() async {
       return;
     }
 
-    // ตรวจสอบว่าผู้ใช้มีคิวที่ active อยู่แล้วหรือไม่
     bool hasActiveQueue = await _hasActiveQueue();
     if (hasActiveQueue) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -421,11 +405,9 @@ Future<void> _loadPromotions() async {
             as Map<String, dynamic>)['lastWalkInQueueNumber'] ??
         0;
 
-    // Calculate new queue number
     int nextNumber = (lastNumber + 1) > 999 ? 1 : lastNumber + 1;
     String queueCode = '#Q-${nextNumber.toString().padLeft(3, '0')}';
 
-    // Create new queue data
     Map<String, dynamic> queueData = {
       'userId': currentUser.uid,
       'restaurantId': widget.restaurantId,
@@ -438,11 +420,9 @@ Future<void> _loadPromotions() async {
       'isReservation': false,
     };
 
-    // Add queue to Firestore
     DocumentReference queueRef =
         await FirebaseFirestore.instance.collection('queues').add(queueData);
 
-    // Add to myQueue of user
     await FirebaseFirestore.instance
         .collection('users')
         .doc(currentUser.uid)
@@ -461,7 +441,6 @@ Future<void> _loadPromotions() async {
       'timestamp': FieldValue.serverTimestamp(),
     });
 
-    // Increase queue count and update last walk-in number
     await FirebaseFirestore.instance
         .collection('restaurants')
         .doc(widget.restaurantId)
@@ -552,14 +531,11 @@ Future<void> _loadPromotions() async {
     );
   }
 
-  // Merge both implementations of queue in advance dialog, incorporating date picker from second file
   void _showQueueInAdvanceDialog() {
-    // Initialize with current time + 2 hours
     DateTime now = DateTime.now();
     DateTime minimumTime = now.add(const Duration(hours: 2));
     DateTime maximumTime = now.add(const Duration(hours: 24));
     
-    // Set default selected time to 2 hours from now
     DateTime selectedDate = minimumTime;
     TimeOfDay selectedTime = TimeOfDay(hour: minimumTime.hour, minute: minimumTime.minute);
     
@@ -572,7 +548,6 @@ Future<void> _loadPromotions() async {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            // Function to validate the selected date and time
             void validateSelectedDateTime() {
               DateTime selectedDateTime = DateTime(
                 selectedDate.year,
@@ -597,7 +572,6 @@ Future<void> _loadPromotions() async {
               }
             }
             
-            // Initial validation
             validateSelectedDateTime();
             
             return AlertDialog(
@@ -618,7 +592,6 @@ Future<void> _loadPromotions() async {
                     ),
                     const SizedBox(height: 20),
 
-                    // Date selection - limited to today or tomorrow based on time
                     const Text('Select booking date:',
                         style: TextStyle(fontSize: 16)),
                     const SizedBox(height: 10),
@@ -628,7 +601,6 @@ Future<void> _loadPromotions() async {
                           context: context,
                           initialDate: selectedDate,
                           firstDate: now,
-                          // Limit to 1 day in advance
                           lastDate: now.add(const Duration(days: 1)),
                           builder: (context, child) {
                             return Theme(
@@ -674,7 +646,6 @@ Future<void> _loadPromotions() async {
 
                     const SizedBox(height: 20),
 
-                    // Time selection - ensure it's at least 2 hours from now
                     const Text(
                       'Select booking time:',
                       style: TextStyle(fontSize: 16),
@@ -682,14 +653,10 @@ Future<void> _loadPromotions() async {
                     const SizedBox(height: 10),
                     InkWell(
                       onTap: () async {
-                        // Set initial time based on current selections
                         TimeOfDay initialTime = selectedTime;
-                        
-                        // If today is selected and time is before minimum, adjust to minimum
                         if (selectedDate.year == now.year && 
                             selectedDate.month == now.month && 
                             selectedDate.day == now.day) {
-                          // If initialTime is before minimumTime, set it to minimumTime
                           if (initialTime.hour < minimumTime.hour || 
                               (initialTime.hour == minimumTime.hour && initialTime.minute < minimumTime.minute)) {
                             initialTime = TimeOfDay(hour: minimumTime.hour, minute: minimumTime.minute);
@@ -735,7 +702,6 @@ Future<void> _loadPromotions() async {
                       ),
                     ),
 
-                    // Error message if time selection is invalid
                     if (errorMessage != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),
@@ -750,7 +716,6 @@ Future<void> _loadPromotions() async {
 
                     const SizedBox(height: 20),
 
-                    // Table type selection (unchanged)
                     const Text(
                       'Type of tables:',
                       style: TextStyle(fontSize: 16),
@@ -805,7 +770,6 @@ Future<void> _loadPromotions() async {
 
                     const SizedBox(height: 20),
 
-                    // Number of persons (unchanged)
                     const Text(
                       'Number of persons:',
                       style: TextStyle(fontSize: 16),
@@ -895,7 +859,6 @@ Future<void> _loadPromotions() async {
                             ),
                           ),
                           onPressed: errorMessage == null ? () {
-                            // Create full datetime from date and time
                             final fullDateTime = DateTime(
                               selectedDate.year,
                               selectedDate.month,
@@ -904,7 +867,6 @@ Future<void> _loadPromotions() async {
                               selectedTime.minute,
                             );
                             
-                            // Final validation before submitting
                             if (fullDateTime.isBefore(minimumTime)) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('กรุณาเลือกเวลาล่วงหน้าอย่างน้อย 2 ชั่วโมง')),
@@ -945,24 +907,21 @@ Future<void> _loadPromotions() async {
     User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return false;
     
-    // ตรวจสอบในตาราง myQueue ของผู้ใช้
     QuerySnapshot snapshot = await FirebaseFirestore.instance
         .collection('users')
         .doc(currentUser.uid)
         .collection('myQueue')
         .where('restaurantId', isEqualTo: widget.restaurantId)
-        .where('status', whereIn: ['waiting', 'booked']) // เฉพาะคิวที่ยังไม่เสร็จสิ้น
+        .where('status', whereIn: ['waiting', 'booked']) 
         .get();
     
     return snapshot.docs.isNotEmpty;
   } catch (e) {
     print('❌ เกิดข้อผิดพลาดในการตรวจสอบคิว: $e');
-    return false; // กรณีเกิดข้อผิดพลาด ให้อนุญาตให้จองได้เพื่อป้องกันการบล็อกผู้ใช้โดยไม่จำเป็น
+    return false; 
   }
 }
 
-  // Combined implementation for advance booking - using structured queue numbering and notification service
-  // Combined implementation for advance booking - using structured queue numbering and notification service
 Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableType) async {
   try {
     setState(() {
@@ -980,7 +939,6 @@ Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableT
       return;
     }
     
-    // ตรวจสอบว่าผู้ใช้มีคิวที่ active อยู่แล้วหรือไม่
     bool hasActiveQueue = await _hasActiveQueue();
     if (hasActiveQueue) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1005,7 +963,6 @@ Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableT
     int nextNumber = (lastNumber + 1) > 999 ? 1 : lastNumber + 1;
     String queueCode = '#R-${nextNumber.toString().padLeft(3, '0')}';
 
-    // Create new queue data for the main queues collection
     Map<String, dynamic> queueData = {
       'userId': currentUser.uid,
       'restaurantId': widget.restaurantId,
@@ -1019,10 +976,8 @@ Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableT
       'createdAt': FieldValue.serverTimestamp(),
     };
 
-    // Add to queues collection
     DocumentReference queueRef = await FirebaseFirestore.instance.collection('queues').add(queueData);
 
-    // Add to advanceBookings collection (from second file)
     await FirebaseFirestore.instance.collection('advanceBookings').add({
       'userId': currentUser.uid,
       'restaurantId': widget.restaurantId,
@@ -1035,7 +990,6 @@ Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableT
       'queueCode': queueCode,
     });
 
-    // Add to myQueue of user
     await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).collection('myQueue').add({
       'restaurantId': widget.restaurantId,
       'restaurantName': widget.name,
@@ -1050,16 +1004,13 @@ Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableT
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // Update queue number for the day
     await restaurantRef.set({
       'reservationQueueNumbers': {
         todayKey: nextNumber,
       }
     }, SetOptions(merge: true));
 
-    // Set up notifications (from second file)
     if (bookingTime.isAfter(DateTime.now())) {
-      // Set up notifications 30 minutes and 15 minutes before booking time
       final NotificationService notificationService = NotificationService();
       await notificationService.scheduleQueueAdvanceNotifications(
         restaurantId: widget.restaurantId,
@@ -1085,7 +1036,6 @@ Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableT
 
   @override
   Widget build(BuildContext context) {
-    // Format distance text
     String distanceText = _distance != null && _distance! >= 0
         ? '${_distance!.toStringAsFixed(1)} km'
         : _isLoadingDistance
@@ -1233,7 +1183,6 @@ Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableT
     );
   }
 
-  // Method to display restaurant image (supports both asset and base64)
   Widget _buildRestaurantImage() {
     if (widget.isFirestoreImage && widget.image.isNotEmpty) {
       try {
@@ -1334,9 +1283,7 @@ Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableT
     }
   }
 
-  // Method to display promotion carousel
   Widget _buildPromotionCarousel() {
-  // ใช้ข้อมูลที่โหลดมาจาก Firestore แทนที่จะใช้ widget.promotionImages
   final promotionImages = _promotionImages.isEmpty ? widget.promotionImages : _promotionImages;
   
   if (promotionImages.isEmpty) {
@@ -1369,9 +1316,9 @@ Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableT
             return GestureDetector(
               onTap: () {
                 _showPromotionPopup(
-                    promotionImages[index], true); // เปลี่ยนเป็น true เสมอเมื่อใช้ข้อมูลจาก Firestore
+                    promotionImages[index], true); 
               },
-              child: _buildPromotionImage(promotionImages[index], true), // เช่นเดียวกัน
+              child: _buildPromotionImage(promotionImages[index], true), 
             );
           },
         ),
@@ -1381,7 +1328,6 @@ Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableT
   );
 }
 
-  // Method to build promotion image
   Widget _buildPromotionImage(String imagePath, [bool isFirestoreImage = false]) {
   isFirestoreImage = isFirestoreImage || widget.isFirestoreImage;
   
@@ -1445,7 +1391,6 @@ Future<void> _addQueueInAdvance(DateTime bookingTime, int persons, String tableT
     }
   }
 
-  // Method to build reservation option buttons
   Widget _buildReservationOption({
     required IconData icon,
     required String title,

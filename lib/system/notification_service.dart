@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class NotificationService {
-  // Singleton pattern
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
@@ -13,44 +12,33 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  // คีย์สำหรับเก็บการแจ้งเตือนที่ถูกส่งแล้ว
   final Set<String> _sentNotifications = {};
   
-  // เพิ่มชุดสำหรับเก็บประวัติการแจ้งเตือนถาวร (ไม่หายแม้ logout/login)
   final Set<String> _permanentNotifications = {};
   
-  // เปลี่ยนคีย์ใหม่เพื่อเริ่มต้นระบบใหม่
   static const String _notificationHistoryKey = 'sent_notifications_history_v3';
-  // เพิ่มคีย์สำหรับประวัติถาวร
   static const String _permanentNotificationHistoryKey = 'permanent_notification_history_v1';
   
   bool _historyLoaded = false;
   bool _permanentHistoryLoaded = false;
 
-  // เพิ่มเมทอด public สำหรับตรวจสอบประวัติถาวร
   bool containsPermanentNotification(String key) {
     return _permanentNotifications.contains(key);
   }
 
-  // เพิ่มเมทอด public สำหรับเพิ่มประวัติถาวร
   Future<void> addPermanentNotification(String key) async {
     _permanentNotifications.add(key);
     await _savePermanentNotificationHistory();
   }
 
   Future<void> init() async {
-    // ยกเลิกการแจ้งเตือนปัจจุบันทั้งหมดเมื่อเริ่มแอป
     await _flutterLocalNotificationsPlugin.cancelAll();
     
-    // โหลดประวัติการแจ้งเตือนก่อน
     await _loadNotificationHistory();
-    // โหลดประวัติการแจ้งเตือนถาวร
     await _loadPermanentNotificationHistory();
     
-    // Initialize timezone
     tz_data.initializeTimeZones();
 
-    // Initialize settings for different platforms
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -69,7 +57,6 @@ class NotificationService {
     await _flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Handle notification tap
         print('🔔 การแจ้งเตือนถูกแตะ: ${response.payload}');
       },
     );
@@ -77,7 +64,6 @@ class NotificationService {
     print('✅ ระบบแจ้งเตือนเริ่มต้นพร้อมประวัติปกติ ${_sentNotifications.length} รายการ และประวัติถาวร ${_permanentNotifications.length} รายการ');
   }
   
-  // เพิ่มฟังก์ชันโหลดประวัติการแจ้งเตือนถาวร
   Future<void> _loadPermanentNotificationHistory() async {
     if (_permanentHistoryLoaded) {
       print('⏩ ข้ามการโหลดประวัติถาวรเพราะโหลดไปแล้ว');
@@ -110,7 +96,6 @@ class NotificationService {
     }
   }
   
-  // เพิ่มฟังก์ชันบันทึกประวัติการแจ้งเตือนถาวร
   Future<void> _savePermanentNotificationHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -122,7 +107,6 @@ class NotificationService {
     }
   }
   
-  // เพิ่มฟังก์ชันโหลดประวัติการแจ้งเตือน
   Future<void> _loadNotificationHistory() async {
     if (_historyLoaded) {
       print('⏩ ข้ามการโหลดประวัติเพราะโหลดไปแล้ว');
@@ -132,8 +116,6 @@ class NotificationService {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      // ลบบรรทัดนี้ออก เพราะมันล้างประวัติทุกครั้ง!
-      // await prefs.remove(_notificationHistoryKey);
       
       final String? historyJson = prefs.getString(_notificationHistoryKey);
       
@@ -159,7 +141,6 @@ class NotificationService {
     }
   }
   
-  // เพิ่มฟังก์ชันบันทึกประวัติการแจ้งเตือน
   Future<void> _saveNotificationHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -171,7 +152,6 @@ class NotificationService {
     }
   }
 
-  // Schedule a notification for a specific time
   Future<void> scheduleNotification({
     required int id,
     required String title,
@@ -201,7 +181,6 @@ class NotificationService {
       iOS: iOSPlatformChannelSpecifics,
     );
 
-    // ยกเลิกการแจ้งเตือนด้วย ID เดียวกันที่อาจมีอยู่แล้ว
     await cancelNotification(id);
 
     await _flutterLocalNotificationsPlugin.zonedSchedule(
@@ -216,10 +195,8 @@ class NotificationService {
       payload: payload,
     );
     
-    // บันทึกว่าได้ตั้งเวลาแจ้งเตือนนี้แล้ว
     String notificationKey = 'scheduled:$id:${scheduledTime.millisecondsSinceEpoch}';
     _sentNotifications.add(notificationKey);
-    // เพิ่มประวัติถาวร
     _permanentNotifications.add('permanent:$id');
     
     await _saveNotificationHistory();
@@ -228,7 +205,6 @@ class NotificationService {
     print('⏰ ตั้งเวลาแจ้งเตือน ID $id สำหรับเวลา ${scheduledTime.toString()}');
   }
 
-  // Show an immediate notification
   Future<void> showNotification({
     required int id,
     required String title,
@@ -258,7 +234,6 @@ class NotificationService {
       iOS: iOSPlatformChannelSpecifics,
     );
 
-    // ยกเลิกการแจ้งเตือนด้วย ID เดียวกันที่อาจมีอยู่แล้ว
     await cancelNotification(id);
 
     await _flutterLocalNotificationsPlugin.show(
@@ -272,14 +247,12 @@ class NotificationService {
     print('🔔 แสดงการแจ้งเตือนทันที ID: $id');
   }
 
-  // แจ้งเตือนเมื่อใกล้ถึงคิวของผู้ใช้ (สำหรับ walk-in queue)
   Future<void> notifyQueueProgress({
     required String restaurantId,
     required String restaurantName,
     required String queueCode,
     required int waitingCount,
   }) async {
-    // ตรวจสอบให้แน่ใจว่าได้โหลดประวัติการแจ้งเตือนแล้ว
     if (!_historyLoaded) {
       await _loadNotificationHistory();
     }
@@ -287,41 +260,32 @@ class NotificationService {
       await _loadPermanentNotificationHistory();
     }
     
-    // สร้างคีย์ถาวรที่ไม่เปลี่ยนแปลงตามวัน
     final String permanentKey = '$restaurantId:$queueCode:$waitingCount';
     
-    // ถ้าเคยส่งแล้ว (แม้จะข้าม session) ให้ข้าม
     if (_permanentNotifications.contains(permanentKey)) {
       print('🔕 ข้ามการแจ้งเตือน $permanentKey (เคยส่งแล้วอย่างถาวร)');
       return;
     }
     
-    // ใช้วันที่ในการสร้างคีย์เพื่อป้องกันการแจ้งเตือนซ้ำในวันเดียวกัน
-    final String today = DateTime.now().toString().split(' ')[0]; // เช่น '2023-03-30'
+    final String today = DateTime.now().toString().split(' ')[0]; 
     
-    // ป้องกันการส่งการแจ้งเตือนซ้ำสำหรับคิวเดียวกันที่จำนวนคิวเท่ากัน
     String notificationKey = '$today:$restaurantId:$queueCode:$waitingCount';
     
-    // ถ้าเคยส่งแล้ว ให้ข้าม
     if (_sentNotifications.contains(notificationKey)) {
       print('🔕 ข้ามการแจ้งเตือน $notificationKey (เคยส่งแล้ว)');
       return;
     }
     
-    // ลบประวัติการแจ้งเตือนเก่าของร้านอาหารและคิวนี้
-    // ใช้ตัวกรองที่ละเอียดขึ้นเพื่อลบเฉพาะรายการที่เกี่ยวข้อง
     await clearQueueNotificationHistory(restaurantId, queueCode);
     
-    // สร้าง ID สำหรับการแจ้งเตือนจาก queueCode
     final int baseId = queueCode.hashCode;
     
-    // ข้อความแจ้งเตือนตามจำนวนคิวที่รออยู่
     String notificationBody;
     int notificationId;
     
     if (waitingCount == 0) {
       notificationBody = "ถึงคิวของคุณแล้ว!";
-      notificationId = baseId + 100; // ใช้ ID พิเศษสำหรับถึงคิวแล้ว
+      notificationId = baseId + 100; 
     } else if (waitingCount == 1) {
       notificationBody = "อีก 1 คิวจะถึงคิวของท่านแล้ว!";
       notificationId = baseId + 1;
@@ -341,13 +305,11 @@ class NotificationService {
       notificationBody = "อีก 10 คิวจะถึงคิวของท่านแล้ว อย่าลืมมาแสดงตนหน้าร้านเมื่อถึงคิวของท่านด้วยนะครับ!";
       notificationId = baseId + 10;
     } else {
-      // ไม่อยู่ในเงื่อนไขที่ต้องแจ้งเตือน
       return;
     }
     
     print('🔔 กำลังส่งการแจ้งเตือน $notificationKey');
     
-    // แสดงการแจ้งเตือน - ยกเลิกการแจ้งเตือนก่อนแสดงอันใหม่
     await cancelNotification(notificationId);
     
     await showNotification(
@@ -357,26 +319,21 @@ class NotificationService {
       payload: 'waiting:$restaurantId:$queueCode:$waitingCount',
     );
     
-    // บันทึกว่าได้ส่งการแจ้งเตือนนี้ไปแล้ว (ทั้งประวัติปกติและถาวร)
     _sentNotifications.add(notificationKey);
     _permanentNotifications.add(permanentKey);
     
-    // บันทึกลง SharedPreferences
     await _saveNotificationHistory();
     await _savePermanentNotificationHistory();
     
     print('✅ แจ้งเตือนสำเร็จและบันทึกประวัติแล้ว');
   }
 
-  // ล้างประวัติการแจ้งเตือนที่เกี่ยวข้องกับคิวที่ระบุ
   Future<void> clearQueueNotificationHistory(String restaurantId, String queueCode) async {
     int countBefore = _sentNotifications.length;
     
-    // ลบเฉพาะประวัติที่เกี่ยวข้องกับร้านและคิวนี้ (ไม่รวมส่วนวันที่)
     _sentNotifications.removeWhere((key) => 
       key.contains(':$restaurantId:$queueCode:'));
     
-    // บันทึกการเปลี่ยนแปลงลง SharedPreferences
     if (countBefore != _sentNotifications.length) {
       await _saveNotificationHistory();
       
@@ -385,15 +342,12 @@ class NotificationService {
     }
   }
   
-  // เพิ่มฟังก์ชันล้างประวัติการแจ้งเตือนถาวร
   Future<void> clearQueuePermanentNotificationHistory(String restaurantId, String queueCode) async {
     int countBefore = _permanentNotifications.length;
     
-    // ลบเฉพาะประวัติถาวรที่เกี่ยวข้องกับร้านและคิวนี้
     _permanentNotifications.removeWhere((key) => 
       key.contains('$restaurantId:$queueCode:'));
     
-    // บันทึกการเปลี่ยนแปลงลง SharedPreferences
     if (countBefore != _permanentNotifications.length) {
       await _savePermanentNotificationHistory();
       
@@ -402,7 +356,6 @@ class NotificationService {
     }
   }
 
-  // Cancel a specific notification
   Future<void> cancelNotification(int id) async {
     try {
       await _flutterLocalNotificationsPlugin.cancel(id);
@@ -411,11 +364,9 @@ class NotificationService {
     }
   }
 
-  // Cancel all notifications
   Future<void> cancelAllNotifications() async {
     try {
       await _flutterLocalNotificationsPlugin.cancelAll();
-      // ล้างประวัติการแจ้งเตือนทั้งหมด
       _sentNotifications.clear();
       await _saveNotificationHistory();
       print('🧹 ล้างการแจ้งเตือนและประวัติทั้งหมดแล้ว');
@@ -424,14 +375,12 @@ class NotificationService {
     }
   }
 
-  // Schedule queue advance notification (30 min, 15 min, and exactly at booking time)
   Future<void> scheduleQueueAdvanceNotifications({
     required String restaurantId,
     required String restaurantName,
     required DateTime bookingTime,
     required String queueCode,
   }) async {
-    // ตรวจสอบให้แน่ใจว่าได้โหลดประวัติการแจ้งเตือนแล้ว
     if (!_historyLoaded) {
       await _loadNotificationHistory();
     }
@@ -439,34 +388,26 @@ class NotificationService {
       await _loadPermanentNotificationHistory();
     }
     
-    // สร้างคีย์ถาวรที่ไม่เปลี่ยนแปลงตามวัน
     String permanentBookingKey = '$restaurantId:$queueCode:booking';
     
-    // ถ้าเคยตั้งเวลาแจ้งเตือนแล้ว (แม้จะข้าม session) ให้ข้าม
     if (_permanentNotifications.contains(permanentBookingKey)) {
       print('🔕 ข้ามการตั้งเวลาแจ้งเตือนการจอง $permanentBookingKey (เคยตั้งไว้แล้วอย่างถาวร)');
       return;
     }
     
-    // ใช้วันที่ในการสร้างคีย์เพื่อป้องกันการแจ้งเตือนซ้ำในวันเดียวกัน
-    final String bookingDate = bookingTime.toString().split(' ')[0]; // เช่น '2023-03-30'
+    final String bookingDate = bookingTime.toString().split(' ')[0]; 
     
-    // สร้างคีย์สำหรับตรวจสอบว่าเคยตั้งเวลาแจ้งเตือนนี้ไปแล้วหรือไม่
     String bookingKey = '$bookingDate:$restaurantId:$queueCode:booking';
     
-    // ถ้าเคยตั้งเวลาแจ้งเตือนแล้ว ให้ข้าม
     if (_sentNotifications.contains(bookingKey)) {
       print('🔕 ข้ามการตั้งเวลาแจ้งเตือนการจอง $bookingKey (เคยตั้งไว้แล้ว)');
       return;
     }
     
-    // รีเซ็ตการแจ้งเตือนสำหรับคิวนี้ก่อน
     await cancelQueueNotifications(queueCode);
     
-    // Generate unique IDs based on queue code to be able to cancel them later if needed
     final int baseId = queueCode.hashCode;
     
-    // Schedule 30 minutes notification
     final DateTime thirtyMinBefore = bookingTime.subtract(const Duration(minutes: 30));
     if (thirtyMinBefore.isAfter(DateTime.now())) {
       await scheduleNotification(
@@ -478,7 +419,6 @@ class NotificationService {
       );
     }
 
-    // Schedule 15 minutes notification
     final DateTime fifteenMinBefore = bookingTime.subtract(const Duration(minutes: 15));
     if (fifteenMinBefore.isAfter(DateTime.now())) {
       await scheduleNotification(
@@ -490,7 +430,6 @@ class NotificationService {
       );
     }
     
-    // เพิ่มการแจ้งเตือนเมื่อถึงเวลาจองพอดี
     if (bookingTime.isAfter(DateTime.now())) {
       await scheduleNotification(
         id: baseId + 2,
@@ -501,7 +440,6 @@ class NotificationService {
       );
     }
     
-    // บันทึกว่าได้ตั้งเวลาแจ้งเตือนนี้แล้ว (ทั้งประวัติปกติและถาวร)
     _sentNotifications.add(bookingKey);
     _permanentNotifications.add(permanentBookingKey);
     
@@ -511,57 +449,48 @@ class NotificationService {
     print('✅ ตั้งเวลาแจ้งเตือนการจองสำเร็จ: $bookingKey');
   }
 
-  // Cancel notifications for a specific queue
   Future<void> cancelQueueNotifications(String queueCode) async {
     final int baseId = queueCode.hashCode;
     
-    // ยกเลิกการแจ้งเตือนตามกำหนดเวลา
-    await cancelNotification(baseId);     // 30 min notification
-    await cancelNotification(baseId + 1); // 15 min notification
-    await cancelNotification(baseId + 2); // exact time notification
+    await cancelNotification(baseId);     
+    await cancelNotification(baseId + 1); 
+    await cancelNotification(baseId + 2); 
     
-    // ยกเลิกการแจ้งเตือนสำหรับคิวที่รออยู่
     for (int i = 1; i <= 10; i++) {
       await cancelNotification(baseId + i);
     }
-    await cancelNotification(baseId + 100); // การแจ้งเตือนเมื่อถึงคิว
+    await cancelNotification(baseId + 100); 
     
-    // ลบประวัติการแจ้งเตือนถาวรที่เกี่ยวข้องกับคิวนี้
     _permanentNotifications.removeWhere((key) => key.contains(':$queueCode:'));
     await _savePermanentNotificationHistory();
     
     print('❌ ยกเลิกการแจ้งเตือนสำหรับคิว $queueCode แล้ว');
   }
   
-  // เพิ่มฟังก์ชันดูประวัติการแจ้งเตือนทั้งหมด (สำหรับการดีบัก)
+  
   List<String> getAllNotificationHistory() {
     return _sentNotifications.toList();
   }
   
-  // เพิ่มฟังก์ชันดูประวัติการแจ้งเตือนถาวรทั้งหมด (สำหรับการดีบัก)
+  
   List<String> getAllPermanentNotificationHistory() {
     return _permanentNotifications.toList();
   }
   
-  // เพิ่มฟังก์ชันล้างประวัติการแจ้งเตือนทั้งหมด
   Future<void> clearAllNotificationHistory() async {
     _sentNotifications.clear();
     await _saveNotificationHistory();
     print('🧹 ล้างประวัติการแจ้งเตือนทั้งหมดแล้ว');
   }
   
-  // เพิ่มฟังก์ชันรีเซ็ตทั้งหมด (ทั้งประวัติปกติและถาวร)
   Future<void> resetAll() async {
-    // ยกเลิกการแจ้งเตือนทั้งหมด
     await _flutterLocalNotificationsPlugin.cancelAll();
     
-    // ล้างประวัติ
     _sentNotifications.clear();
     _permanentNotifications.clear();
     _historyLoaded = false;
     _permanentHistoryLoaded = false;
     
-    // ลบข้อมูลจาก SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_notificationHistoryKey);
     await prefs.remove(_permanentNotificationHistoryKey);

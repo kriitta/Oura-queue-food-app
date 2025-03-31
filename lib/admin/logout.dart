@@ -15,7 +15,7 @@ class LogoutPage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(Icons.exit_to_app, size: 100, color: Colors.red[700]), // ✅ ไอคอน Logout
+          Icon(Icons.exit_to_app, size: 100, color: Colors.red[700]), 
           const SizedBox(height: 20),
           const Text(
             "Are you sure you want to log out?",
@@ -34,7 +34,7 @@ class LogoutPage extends StatelessWidget {
             children: [
               OutlinedButton(
                 onPressed: () {
-                  // ✅ ปิด Modal และยกเลิก Logout
+                  
                   Navigator.pop(context);
                 },
                 style: OutlinedButton.styleFrom(

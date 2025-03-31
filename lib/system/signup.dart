@@ -13,29 +13,23 @@ class _SignUpPageState extends State<SignUpPage> {
   bool isUser = true;
   final _formKey = GlobalKey<FormState>();
 
-  // Common controllers
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   
-  // User specific controllers
   final TextEditingController _userNameController = TextEditingController();
   final TextEditingController _userPhoneController = TextEditingController();
   
-  // Partner specific controllers
   final TextEditingController _partnerNameController = TextEditingController();
   final TextEditingController _partnerPhoneController = TextEditingController();
   final TextEditingController _restaurantNameController = TextEditingController();
 
   void _clearFormFields() {
-    // Clear common fields
     _emailController.clear();
     _passwordController.clear();
     
-    // Clear user specific fields
     _userNameController.clear();
     _userPhoneController.clear();
     
-    // Clear partner specific fields
     _partnerNameController.clear();
     _partnerPhoneController.clear();
     _restaurantNameController.clear();
@@ -43,28 +37,23 @@ class _SignUpPageState extends State<SignUpPage> {
     _formKey.currentState?.reset();
   }
 
-  // ฟังก์ชันสำหรับสร้างผู้ใช้ใหม่ใน Users collection และเพิ่ม coins เริ่มต้น
   Future<void> _createUserWithCoins(String uid, Map<String, dynamic> userData) async {
   try {
-    // เพิ่มการตรวจสอบข้อมูลก่อนสร้าง
     if (userData.isEmpty) {
       throw Exception('User data cannot be empty');
     }
 
-    // ตรวจสอบว่ามี field ที่จำเป็นครบถ้วน
     if (!userData.containsKey('name') || 
         !userData.containsKey('email') || 
         !userData.containsKey('phone')) {
       throw Exception('Missing required user data fields');
     }
 
-    // เพิ่มฟิลด์ coins และ uid 
     userData['uid'] = uid;
     userData['coins'] = 10;
     userData['role'] = 'User';
     userData['createdAt'] = Timestamp.now();
 
-    // บันทึกข้อมูลผู้ใช้
     await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -72,7 +61,6 @@ class _SignUpPageState extends State<SignUpPage> {
     
     print("✅ User data saved with 10 initial coins!");
     
-    // บันทึกประวัติการได้รับ coins
     await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -91,9 +79,8 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 }
   
-  // ฟังก์ชันเพิ่ม coins ให้กับผู้ใช้ (สำหรับใช้ในอนาคต)
   Future<void> _addCoinsToUser(String userId, int amount) async {
-    if (amount <= 0) return; // ไม่เพิ่มถ้าจำนวนไม่ถูกต้อง
+    if (amount <= 0) return; 
     
     try {
       await FirebaseFirestore.instance
@@ -103,7 +90,6 @@ class _SignUpPageState extends State<SignUpPage> {
             'coins': FieldValue.increment(amount),
           });
       
-      // บันทึกประวัติการเพิ่ม coins
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -142,7 +128,6 @@ class _SignUpPageState extends State<SignUpPage> {
         await _createUserWithCoins(uid, userData);
       } else {
 
-          // Save Partner data (ไม่มี coins)
           await FirebaseFirestore.instance.collection('partners').doc(uid).set({
             'uid': uid,
             'ownerName': _partnerNameController.text,
@@ -163,17 +148,14 @@ class _SignUpPageState extends State<SignUpPage> {
       Navigator.pop(context);
       
     } on FirebaseAuthException catch (e) {
-      // จัดการ error จาก Firebase Authentication
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Registration Error: ${e.message}')),
       );
     } on FirebaseException catch (e) {
-      // จัดการ error จาก Firestore
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Firestore Error: ${e.message}')),
       );
     } catch (e) {
-      // จัดการ error อื่นๆ
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -217,7 +199,6 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 30),
 
-              // User/Partner Tab
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -282,7 +263,6 @@ class _SignUpPageState extends State<SignUpPage> {
             const SizedBox(height: 15),
             _buildTextField('Password', _passwordController, isPassword: true),
             const SizedBox(height: 15),
-            // ข้อความแสดงโบนัส coins เริ่มต้น
             const Text(
               '* New users get 10 coins as a welcome bonus! 🎁',
               style: TextStyle(

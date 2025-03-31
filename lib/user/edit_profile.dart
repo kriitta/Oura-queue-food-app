@@ -24,7 +24,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _phoneController;
   
   File? _imageFile;
-  String? _base64Image; // ใช้เก็บรูปภาพแบบ base64
+  String? _base64Image; 
   bool _isLoading = false;
   bool _hasChanges = false;
 
@@ -33,9 +33,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.initState();
     _nameController = TextEditingController(text: widget.userData['name'] ?? '');
     _phoneController = TextEditingController(text: widget.userData['phone'] ?? '');
-    _base64Image = widget.userData['profileImage']; // เก็บรูปภาพจาก Firestore
+    _base64Image = widget.userData['profileImage']; 
     
-    // Add listeners to detect changes
     _nameController.addListener(_onFieldChanged);
     _phoneController.addListener(_onFieldChanged);
   }
@@ -51,9 +50,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _pickImage() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 512, // จำกัดขนาดเพื่อลดขนาดไฟล์
+      maxWidth: 512,
       maxHeight: 512,
-      imageQuality: 70, // บีบอัดคุณภาพลงเพื่อลดขนาดไฟล์
+      imageQuality: 70, 
     );
 
     if (pickedFile != null) {
@@ -62,7 +61,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _hasChanges = true;
       });
       
-      // แปลงรูปภาพเป็น base64 ทันที
       await _convertImageToBase64();
     }
   }
@@ -101,20 +99,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
         return;
       }
       
-      // บันทึกข้อมูลลงใน Firestore
       await _firestore.collection('users').doc(user.uid).update({
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
-        'profileImage': _base64Image, // เก็บรูปภาพแบบ base64 ใน Firestore
+        'profileImage': _base64Image, 
         'updatedAt': FieldValue.serverTimestamp(),
       });
       
-      // แสดงข้อความสำเร็จ
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully!')),
         );
-        Navigator.pop(context, true); // ส่งค่า true กลับเพื่อบอกว่ามีการเปลี่ยนแปลง
+        Navigator.pop(context, true); 
       }
     } catch (e) {
       setState(() {
@@ -164,7 +160,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Profile Image
                     GestureDetector(
                       onTap: _pickImage,
                       child: Stack(
@@ -240,7 +235,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Phone field
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
@@ -266,7 +260,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                     const SizedBox(height: 40),
 
-                    // Email (read-only)
                     TextFormField(
                       initialValue: widget.userData['email'] ?? '',
                       readOnly: true,
@@ -285,7 +278,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                     const SizedBox(height: 30),
 
-                    // Save Button
                     if (_hasChanges)
                       SizedBox(
                         width: double.infinity,

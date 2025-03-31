@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import '../system/main.dart';
 
-// Import the EditProfilePage
 import 'edit_profile.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -65,7 +64,6 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
     
-    // If changes were made, reload user data
     if (result == true) {
       _loadUserData();
     }
@@ -82,7 +80,6 @@ class _ProfilePageState extends State<ProfilePage> {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return stats;
     
-    // โหลดข้อมูล coins จาก user document
     DocumentSnapshot userDoc = await _firestore
         .collection('users')
         .doc(currentUser.uid)
@@ -91,11 +88,9 @@ class _ProfilePageState extends State<ProfilePage> {
     if (userDoc.exists) {
       Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
       
-      // ตรวจสอบฟิลด์ coins
       if (userData.containsKey('coins')) {
         stats['coins'] = userData['coins'].toString();
       } else {
-        // ถ้าไม่มีฟิลด์ coins ให้สร้างพร้อมตั้งค่าเริ่มต้นที่ 10
         await _firestore
             .collection('users')
             .doc(currentUser.uid)
@@ -104,7 +99,6 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     }
     
-    // นับจำนวนคิวทั้งหมดที่จองไปแล้ว
     QuerySnapshot reservationsSnapshot = await _firestore
         .collection('users')
         .doc(currentUser.uid)
@@ -126,11 +120,10 @@ class _ProfilePageState extends State<ProfilePage> {
     await _auth.signOut();
     if (!mounted) return;
     
-    // ลบทุก route และเริ่มต้นที่ MainApp
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const MainApp()),
-      (Route<dynamic> route) => false,  // ตรวจสอบให้แน่ใจว่ามีการลบทุก route
+      (Route<dynamic> route) => false,  
     );
   } catch (e) {
     if (!mounted) return;
@@ -182,7 +175,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           backgroundColor: const Color(0xFFECDFDF),
                           backgroundImage: MemoryImage(base64Decode(_userData!['profileImage'])),
                           onBackgroundImageError: (_, __) {
-                            // ถ้าโหลดรูปไม่สำเร็จ จะแสดงตัวอักษรย่อแทน
                           },
                         )
                       : CircleAvatar(
@@ -272,7 +264,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 20),
             
-            // Activity Card
             FutureBuilder<Map<String, dynamic>>(
             future: _loadActivityStats(),
             builder: (context, snapshot) {
@@ -280,7 +271,6 @@ class _ProfilePageState extends State<ProfilePage> {
               String coins = '0';
               
               if (snapshot.connectionState == ConnectionState.waiting) {
-                // กำลังโหลดข้อมูล
                 return Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -368,7 +358,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
             const SizedBox(height: 40),
             
-            // Edit Profile Button
             OutlinedButton.icon(
               onPressed: _navigateToEditProfile,
               icon: const Icon(Icons.edit, color: Color(0xFF8B2323)),
@@ -386,7 +375,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 20),
             
-            // Logout Button
             ElevatedButton.icon(
               onPressed: _signOut,
               icon: const Icon(Icons.logout, color: Colors.white),
